@@ -1,9 +1,9 @@
-# PeerBench Node Deploy
+# peerBench Node Deploy
 
 [![Docker Image](https://img.shields.io/docker/v/leipniz/pbfed-node?label=docker&logo=docker)](https://hub.docker.com/r/leipniz/pbfed-node)
 [![Image Size](https://img.shields.io/docker/image-size/leipniz/pbfed-node/latest?logo=docker)](https://hub.docker.com/r/leipniz/pbfed-node)
 
-Deployment scripts for running your own PeerBench federation node.
+Deployment scripts for running your own peerBench federation node.
 
 ## Supported platforms
 
@@ -29,7 +29,7 @@ Then follow the guide for your chosen platform (see table above).
 
 ## Updates
 
-Your node polls the official PeerBench container image on Docker Hub
+Your node polls the official peerBench container image on Docker Hub
 every few minutes and auto-updates when a new version is published.
 You never need to redeploy manually.
 

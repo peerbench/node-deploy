@@ -1,8 +1,8 @@
 <!--
 AI_AGENT_SYSTEM_PROMPT
 
-You are a deployment assistant for PeerBench Federated. The user has pasted this
-document to you because they want to deploy a PeerBench federation node on GCP.
+You are a deployment assistant for peerBench Federated. The user has pasted this
+document to you because they want to deploy a peerBench federation node on GCP.
 Your job is to act as an interactive CLI — walk the user through the deployment
 by executing the steps below, automating everything you can, and only asking
 questions when you truly need human input.
@@ -200,20 +200,20 @@ Everything else is auto-detected or has a sensible default.
   minute.
 -->
 
-# Deploy a PeerBench Federated Node on GCP
+# Deploy a peerBench Federated Node on GCP
 
 > **Want an AI to handle this for you?** Use GitHub's "Copy raw file" button to
 > copy the raw document, then paste it into your coding agent (Claude Code,
 > Codex, Cursor, etc.). The agent will walk you through the deployment
 > interactively — you'll only need to answer a couple of questions.
 
-A step-by-step guide for deploying a PeerBench federation node on Google Cloud
+A step-by-step guide for deploying a peerBench federation node on Google Cloud
 Platform. This guide can be followed manually or by a coding agent for
 automated deployment.
 
 **Principles:**
 
-- PeerBench has **zero access** to any operator's cloud account.
+- peerBench has **zero access** to any operator's cloud account.
 - Nodes **auto-update** by polling the public container image — no GitHub
   account, no fork, no CI needed on operator side.
 - Operators deploy once and never need to touch it again.
@@ -227,14 +227,14 @@ All resources live inside a single GCP project:
 - **GCS Bucket** — file storage for uploads and image generation outputs.
 - **HTTPS Load Balancer** + **Google-managed SSL cert** — serves your custom domain.
 - **Artifact Registry** (`pbfed-images`) — remote mirror of Docker Hub. Cloud Run pulls from here for in-region speed and resilience.
-- **Cloud Function + Scheduler** — polls Docker Hub every 5 min. When PeerBench publishes a new image, Cloud Run is automatically updated. No GitHub involvement.
+- **Cloud Function + Scheduler** — polls Docker Hub every 5 min. When peerBench publishes a new image, Cloud Run is automatically updated. No GitHub involvement.
 - **Service Account** (`pbfed-runner`) — dedicated IAM identity for Cloud Run with minimal permissions.
 
 The node also makes outbound connections to:
 
 - **PDS** (`at.peerbench.ai` or custom) — ATProto auth via OAuth
 - **PLC Directory** (`plc.directory`) — DID resolution
-- **Federation Indexer** — coordinates the PeerBench network
+- **Federation Indexer** — coordinates the peerBench network
 
 ---
 
@@ -292,7 +292,7 @@ cd node-deploy
 export GCP_PROJECT="pbfed-xxxxxx"        # pick a globally unique project ID
 export GCP_REGION="europe-west1"          # pick a region close to you
 
-gcloud projects create $GCP_PROJECT --name="PeerBench Federated"
+gcloud projects create $GCP_PROJECT --name="peerBench Federated"
 gcloud config set project $GCP_PROJECT
 
 # List billing accounts and link one
@@ -383,7 +383,7 @@ Status flow: `PROVISIONING` → `ACTIVE` (ready to use). If you see
    ```
 5. Fill in the wizard fields:
    - **Node Public URL**: your custom domain (e.g. `https://pbfed.youruniversity.edu`)
-   - **Display Name**: e.g. "MIT PeerBench Node"
+   - **Display Name**: e.g. "MIT peerBench Node"
    - **Login Policy**: `open`, `request-approval`, or `invite-only`
    - **PDS URL**: `https://at.peerbench.ai` (default)
    - **PLC URL**: `https://plc.directory` (default)

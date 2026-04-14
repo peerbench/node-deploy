@@ -64,7 +64,7 @@ resource "google_storage_bucket_object" "auto_update_source" {
 # Service account for the function (has Cloud Run admin + act-as runner)
 resource "google_service_account" "auto_update_runner" {
   account_id   = "pbfed-auto-update"
-  display_name = "PeerBench Federated Auto-Update Function"
+  display_name = "peerBench Federated Auto-Update Function"
   project      = var.gcp_project
 }
 
@@ -135,7 +135,7 @@ resource "google_cloudfunctions2_function" "auto_update" {
 # Scheduler service account (allowed to invoke the function)
 resource "google_service_account" "scheduler_invoker" {
   account_id   = "pbfed-scheduler"
-  display_name = "PeerBench Auto-Update Scheduler Invoker"
+  display_name = "peerBench Auto-Update Scheduler Invoker"
   project      = var.gcp_project
 }
 

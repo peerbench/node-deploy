@@ -132,7 +132,7 @@ resource "google_sql_user" "app" {
 
 resource "google_service_account" "runner" {
   account_id   = "pbfed-runner"
-  display_name = "PeerBench Federated Cloud Run Runner"
+  display_name = "peerBench Federated Cloud Run Runner"
   project      = var.gcp_project
 }
 
