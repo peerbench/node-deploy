@@ -1,0 +1,3 @@
+gcp_project   = "pbfed-xxxxxx"  # your globally-unique GCP project ID
+gcp_region    = "europe-west1"
+custom_domain = "pbfed.youruniversity.edu"

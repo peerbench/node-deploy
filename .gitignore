@@ -1,0 +1,17 @@
+# Terraform
+.terraform/
+.terraform-tmp/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Function build artifacts
+node_modules/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
