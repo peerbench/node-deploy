@@ -132,8 +132,16 @@ Everything else is auto-detected or has a sensible default.
       be sent here after the wizard — the operator will need it to finish
       setup. Use a real inbox you can check."
 
-    Retrieve the bootstrap token from Cloud Run logs for the user:
-    `gcloud run services logs read pbfed-node --region=$REGION --project=$PROJECT --limit=50 | grep "Bootstrap token"`
+    Retrieve the **most recent** bootstrap token from Cloud Run logs. The
+    service may have restarted multiple times (e.g. after auto-update
+    revision rollouts), each emitting a new token — always use the latest.
+    Pipe through `tail -n 1` to grab the newest match, never the first:
+
+    ```bash
+    gcloud run services logs read pbfed-node \
+      --region=$REGION --project=$PROJECT --limit=200 \
+      | grep "Bootstrap token" | tail -n 1
+    ```
 
     Also paste the storage credentials from `tofu output` into the wizard.
 
@@ -367,10 +375,13 @@ Status flow: `PROVISIONING` → `ACTIVE` (ready to use). If you see
 
 1. Open your custom domain in a browser (e.g. `https://pbfed.youruniversity.edu`)
 2. You'll see the **Bootstrap Wizard** — runs only on first boot
-3. Get the bootstrap token from Cloud Run logs:
+3. Get the bootstrap token from Cloud Run logs. Use `tail -n 1` to grab
+   the most recent token — the service may have restarted multiple times
+   and each restart emits a new token.
    ```bash
    gcloud run services logs read pbfed-node \
-     --region=$GCP_REGION --limit=50 --project=$GCP_PROJECT | grep "Bootstrap token"
+     --region=$GCP_REGION --limit=200 --project=$GCP_PROJECT \
+     | grep "Bootstrap token" | tail -n 1
    ```
 4. Get storage credentials for the wizard:
    ```bash
