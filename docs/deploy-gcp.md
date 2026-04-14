@@ -66,7 +66,7 @@ Everything else is auto-detected or has a sensible default.
 ## Defaults (do not ask unless user overrides)
 
 - **Indexer URL**: `https://indexer.peerbench.ai`
-- **PDS URL**: `https://at.peerbench.ai`
+- **PDS URL**: `https://p.0rs.org`
 - **PLC URL**: `https://plc.directory`
 
 ## Deployment Flow
@@ -232,7 +232,7 @@ All resources live inside a single GCP project:
 
 The node also makes outbound connections to:
 
-- **PDS** (`at.peerbench.ai` or custom) — ATProto auth via OAuth
+- **PDS** (`p.0rs.org` or custom) — identity server used for operator + user sign-in
 - **PLC Directory** (`plc.directory`) — DID resolution
 - **Federation Indexer** — coordinates the peerBench network
 
@@ -385,7 +385,7 @@ Status flow: `PROVISIONING` → `ACTIVE` (ready to use). If you see
    - **Node Public URL**: your custom domain (e.g. `https://pbfed.youruniversity.edu`)
    - **Display Name**: e.g. "MIT peerBench Node"
    - **Login Policy**: `open`, `request-approval`, or `invite-only`
-   - **PDS URL**: `https://at.peerbench.ai` (default)
+   - **PDS URL**: `https://p.0rs.org` (default)
    - **PLC URL**: `https://plc.directory` (default)
    - **Indexer URL**: `https://indexer.peerbench.ai` (default)
    - **Operator Password**: choose a strong password
