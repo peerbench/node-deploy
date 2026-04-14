@@ -20,12 +20,6 @@ cd node-deploy
 
 Then follow the guide for your chosen platform (see table above).
 
-## Updates
-
-Your node polls the official peerBench container image on Docker Hub
-every few minutes and auto-updates when a new version is published.
-You never need to redeploy manually.
-
 ## For AI coding agents
 
 Open the platform-specific guide (e.g. `docs/deploy-gcp.md`) in raw
