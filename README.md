@@ -7,16 +7,9 @@ Deployment scripts for running your own peerBench federation node.
 
 ## Supported platforms
 
-| Platform | Guide | Status |
-|---|---|---|
-| Google Cloud Platform | [docs/deploy-gcp.md](docs/deploy-gcp.md) | ✅ Available |
-| AWS | — | 🛠️ Planned |
-| Azure | — | 🛠️ Planned |
-| Render | — | 🛠️ Planned |
-| Self-hosted (Docker Compose) | — | 🛠️ Planned |
-
-More platforms will be added. Each has its own guide under `docs/` and
-scripts under `terraform/<platform>/` (or equivalent).
+| Platform | Guide |
+|---|---|
+| Google Cloud Platform | [docs/deploy-gcp.md](docs/deploy-gcp.md) |
 
 ## Quick start
 
