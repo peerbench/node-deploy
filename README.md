@@ -1,5 +1,8 @@
 # PeerBench Node Deploy
 
+[![Docker Image](https://img.shields.io/docker/v/leipniz/pbfed-node?label=docker&logo=docker)](https://hub.docker.com/r/leipniz/pbfed-node)
+[![Image Size](https://img.shields.io/docker/image-size/leipniz/pbfed-node/latest?logo=docker)](https://hub.docker.com/r/leipniz/pbfed-node)
+
 Deployment scripts for running your own PeerBench federation node.
 
 ## Quick start
