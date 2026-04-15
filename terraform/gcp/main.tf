@@ -277,14 +277,21 @@ resource "google_cloud_run_v2_service" "node" {
         mount_path = "/cloudsql"
       }
 
-      # Only DATABASE_URL is set by Terraform directly — the rest
-      # (NODE_PUBLIC_URL, STORAGE_*, profile, federation endpoints) is
-      # patched in after create by null_resource.set_env. That way we can
-      # use the live Cloud Run URL for NODE_PUBLIC_URL when no custom
-      # domain is configured.
+      # Only the two boot-critical env vars are set by Terraform directly
+      # (DATABASE_URL for the container to connect to Postgres, NODE_ENV
+      # so first boot already runs in production mode). The rest of the
+      # env — NODE_PUBLIC_URL, STORAGE_*, profile, federation endpoints —
+      # is patched in after create by null_resource.set_env. That way we
+      # can use the live Cloud Run URL for NODE_PUBLIC_URL when no
+      # custom domain is configured.
       env {
         name  = "DATABASE_URL"
         value = local.database_url
+      }
+
+      env {
+        name  = "NODE_ENV"
+        value = "production"
       }
     }
   }
