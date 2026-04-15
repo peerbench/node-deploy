@@ -1,11 +1,11 @@
 output "node_url" {
-  description = "Public URL of the deployed node (custom domain). Open this to complete the setup wizard once DNS + SSL are ready."
-  value       = "https://${var.custom_domain}"
+  description = "Public URL of the deployed node. For a custom-domain deploy, this is the https://<custom_domain> URL (use once DNS + SSL are ready). For an auto-URL deploy, this is the Cloud Run service URL and is usable immediately."
+  value       = var.custom_domain != "" ? "https://${var.custom_domain}" : google_cloud_run_v2_service.node.uri
 }
 
 output "load_balancer_ip" {
-  description = "Static IP of the HTTPS load balancer. Add an A record at your DNS provider pointing your custom_domain to this IP."
-  value       = google_compute_global_address.lb.address
+  description = "Static IP of the HTTPS load balancer. Add an A record at your DNS provider pointing your custom_domain to this IP. Null when no custom domain is configured."
+  value       = length(google_compute_global_address.lb) > 0 ? google_compute_global_address.lb[0].address : null
 }
 
 output "cloud_run_url" {

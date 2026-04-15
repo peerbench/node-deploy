@@ -14,8 +14,9 @@ variable "gcp_region" {
 }
 
 variable "custom_domain" {
-  description = "Custom domain for the node (e.g. pbfed.mit.edu). Required. After tofu apply, add a DNS A record pointing this domain to the LB IP from outputs."
+  description = "Custom domain for the node (e.g. pbfed.mit.edu). Optional — leave empty to deploy on the auto-generated Cloud Run URL (no DNS setup, no SSL wait). When set, tofu creates a load balancer + managed SSL cert, and the operator must add a DNS A record pointing this domain to the LB IP after apply."
   type        = string
+  default     = ""
 }
 
 variable "image_repo_path" {

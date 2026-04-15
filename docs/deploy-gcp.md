@@ -23,7 +23,10 @@ You are a deployment assistant for peerBench Federated. The user has pasted this
 
 Only ask for things you cannot auto-detect or generate:
 
-1. **Custom domain** — required. The domain the operator wants the node served on (e.g. `pbfed.mit.edu`). Explain that they'll need access to DNS for this domain to add an A record pointing at the load balancer IP. If the operator doesn't have a domain, tell them they need one before proceeding.
+1. **Custom domain** — **optional**. Phrase the question so the operator knows they can skip it:
+   - "Do you have a custom domain (e.g. `pbfed.mit.edu`) you want to serve the node on? If yes, I'll set up a load balancer + managed SSL cert — you'll need DNS access to add an A record and there's a one-time 15-60 min wait for the cert. If no, I'll deploy on the auto-generated Cloud Run URL — no DNS, no SSL wait, node live in ~2 min."
+   - If the operator provides a domain, treat it exactly as before (LB + SSL path).
+   - If they skip / say no / say "use the default URL", set `custom_domain = ""` in `terraform.tfvars`. The Terraform config skips the load balancer + SSL entirely, and injects the Cloud Run auto-URL as `NODE_PUBLIC_URL` after the service is created.
 
 2. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
    - `open` — anyone on the internet can sign up without approval.
@@ -156,7 +159,7 @@ Generate `terraform.tfvars` from user input:
 ```hcl
 gcp_project       = "pbfed-xxxxxx"
 gcp_region        = "europe-west1"
-custom_domain     = "pbfed.youruniversity.edu"
+custom_domain     = "pbfed.youruniversity.edu"   # or "" for the auto-URL deploy
 node_display_name = "MIT peerBench Node"
 node_login_policy = "request-approval"         # open | request-approval | invite-only
 ```
@@ -181,7 +184,10 @@ storage_bucket_name = "pbfed-xxxxxx-pbfed-storage"
 ...
 ```
 
-### Step 4 — Configure DNS
+### Step 4 — Configure DNS *(custom-domain deploys only — skip if `custom_domain` is empty)*
+
+If `custom_domain` was left empty, skip this step entirely. The node is already reachable at the Cloud Run URL emitted by `tofu output node_url` — proceed directly to Step 6 (the SSL wait is also skipped).
+
 
 Get `load_balancer_ip` from Terraform outputs. Tell user to add an A record at their DNS provider pointing `custom_domain` to that IP:
 
@@ -194,7 +200,7 @@ Get `load_balancer_ip` from Terraform outputs. Tell user to add an A record at t
 
 For apex domains, add the A record at root.
 
-### Step 5 — Wait for SSL Cert
+### Step 5 — Wait for SSL Cert *(custom-domain deploys only — skip if `custom_domain` is empty)*
 
 Google-managed SSL takes **15-60 minutes** after DNS propagates. This is unavoidable — it's Google's internal DNS + CAA verification + cert issuance pipeline.
 
@@ -209,7 +215,7 @@ Google-managed SSL takes **15-60 minutes** after DNS propagates. This is unavoid
 
 ### Step 6 — Guide User Through Setup Wizard
 
-Open `https://<custom_domain>` in a browser. The **Bootstrap Wizard** runs only on first boot.
+Open the node URL in a browser — it's `https://<custom_domain>` for custom-domain deploys, or the Cloud Run URL (from `tofu output node_url`) for auto-URL deploys. The **Bootstrap Wizard** runs only on first boot.
 
 **Retrieve the most recent bootstrap token** from Cloud Run logs. The service may have restarted multiple times (e.g. after auto-update revision rollouts), each emitting a new token — always use the latest. Pipe through `tail -n 1` to grab the newest match:
 

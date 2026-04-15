@@ -277,64 +277,14 @@ resource "google_cloud_run_v2_service" "node" {
         mount_path = "/cloudsql"
       }
 
+      # Only DATABASE_URL is set by Terraform directly — the rest
+      # (NODE_PUBLIC_URL, STORAGE_*, profile, federation endpoints) is
+      # patched in after create by null_resource.set_env. That way we can
+      # use the live Cloud Run URL for NODE_PUBLIC_URL when no custom
+      # domain is configured.
       env {
         name  = "DATABASE_URL"
         value = local.database_url
-      }
-
-      env {
-        name  = "NODE_PUBLIC_URL"
-        value = "https://${var.custom_domain}"
-      }
-
-      env {
-        name  = "NODE_DISPLAY_NAME"
-        value = var.node_display_name
-      }
-
-      env {
-        name  = "NODE_LOGIN_POLICY"
-        value = var.node_login_policy
-      }
-
-      env {
-        name  = "PDS_URL"
-        value = var.pds_url
-      }
-
-      env {
-        name  = "PLC_URL"
-        value = var.plc_url
-      }
-
-      env {
-        name  = "INDEXER_URL"
-        value = var.indexer_url
-      }
-
-      env {
-        name  = "STORAGE_ENDPOINT"
-        value = "https://storage.googleapis.com"
-      }
-
-      env {
-        name  = "STORAGE_REGION"
-        value = google_storage_bucket.node_storage.location
-      }
-
-      env {
-        name  = "STORAGE_BUCKET"
-        value = google_storage_bucket.node_storage.name
-      }
-
-      env {
-        name  = "STORAGE_ACCESS_KEY"
-        value = google_storage_hmac_key.node_storage_hmac.access_id
-      }
-
-      env {
-        name  = "STORAGE_SECRET_KEY"
-        value = google_storage_hmac_key.node_storage_hmac.secret
       }
     }
   }
@@ -342,12 +292,54 @@ resource "google_cloud_run_v2_service" "node" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].containers[0].env,
     ]
   }
 
   depends_on = [
     google_project_iam_member.runner_roles,
   ]
+}
+
+# --------------------------------------------------------------------------
+# Runtime env injection
+# --------------------------------------------------------------------------
+#
+# Patches the full set of runtime env vars onto the Cloud Run service after
+# it exists. Required because NODE_PUBLIC_URL has to reference the Cloud Run
+# URI when no custom domain is set, which would be a self-reference inside
+# the same resource block. gcloud's `^@@^` delimiter lets us pass values
+# that may contain commas safely. Re-runs whenever any of the tracked
+# values change.
+resource "null_resource" "set_env" {
+  triggers = {
+    service_uri       = google_cloud_run_v2_service.node.uri
+    custom_domain     = var.custom_domain
+    node_display_name = var.node_display_name
+    node_login_policy = var.node_login_policy
+    pds_url           = var.pds_url
+    plc_url           = var.plc_url
+    indexer_url       = var.indexer_url
+    bucket            = google_storage_bucket.node_storage.name
+    bucket_location   = google_storage_bucket.node_storage.location
+    hmac_access       = google_storage_hmac_key.node_storage_hmac.access_id
+    hmac_secret       = google_storage_hmac_key.node_storage_hmac.secret
+  }
+
+  provisioner "local-exec" {
+    environment = {
+      HMAC_SECRET = google_storage_hmac_key.node_storage_hmac.secret
+    }
+    command = <<-EOT
+      PUBLIC_URL="${var.custom_domain != "" ? "https://${var.custom_domain}" : google_cloud_run_v2_service.node.uri}"
+      gcloud run services update ${google_cloud_run_v2_service.node.name} \
+        --project=${var.gcp_project} \
+        --region=${var.gcp_region} \
+        --update-env-vars="^@@^NODE_PUBLIC_URL=$PUBLIC_URL@@NODE_DISPLAY_NAME=${var.node_display_name}@@NODE_LOGIN_POLICY=${var.node_login_policy}@@PDS_URL=${var.pds_url}@@PLC_URL=${var.plc_url}@@INDEXER_URL=${var.indexer_url}@@STORAGE_ENDPOINT=https://storage.googleapis.com@@STORAGE_REGION=${google_storage_bucket.node_storage.location}@@STORAGE_BUCKET=${google_storage_bucket.node_storage.name}@@STORAGE_ACCESS_KEY=${google_storage_hmac_key.node_storage_hmac.access_id}@@STORAGE_SECRET_KEY=$HMAC_SECRET"
+    EOT
+  }
+
+  depends_on = [google_cloud_run_v2_service.node]
 }
 
 # Allow unauthenticated access (public web app)
@@ -363,7 +355,16 @@ resource "google_cloud_run_v2_service_iam_member" "public_access" {
 # HTTPS Load Balancer (Google-managed SSL, no Search Console verification)
 # --------------------------------------------------------------------------
 
+#
+# Everything below is skipped when no custom domain is configured — the
+# node is reached directly via the Cloud Run auto-generated URL instead.
+#
+locals {
+  lb_count = var.custom_domain != "" ? 1 : 0
+}
+
 resource "google_compute_region_network_endpoint_group" "neg" {
+  count                 = local.lb_count
   name                  = "pbfed-neg"
   project               = var.gcp_project
   region                = var.gcp_region
@@ -375,6 +376,7 @@ resource "google_compute_region_network_endpoint_group" "neg" {
 }
 
 resource "google_compute_backend_service" "backend" {
+  count   = local.lb_count
   name    = "pbfed-backend"
   project = var.gcp_project
 
@@ -382,17 +384,19 @@ resource "google_compute_backend_service" "backend" {
   load_balancing_scheme = "EXTERNAL"
 
   backend {
-    group = google_compute_region_network_endpoint_group.neg.id
+    group = google_compute_region_network_endpoint_group.neg[0].id
   }
 }
 
 resource "google_compute_url_map" "lb" {
+  count           = local.lb_count
   name            = "pbfed-url-map"
   project         = var.gcp_project
-  default_service = google_compute_backend_service.backend.id
+  default_service = google_compute_backend_service.backend[0].id
 }
 
 resource "google_compute_managed_ssl_certificate" "lb" {
+  count   = local.lb_count
   name    = "pbfed-cert"
   project = var.gcp_project
 
@@ -406,28 +410,32 @@ resource "google_compute_managed_ssl_certificate" "lb" {
 }
 
 resource "google_compute_target_https_proxy" "lb" {
+  count            = local.lb_count
   name             = "pbfed-https-proxy"
   project          = var.gcp_project
-  url_map          = google_compute_url_map.lb.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.lb.id]
+  url_map          = google_compute_url_map.lb[0].id
+  ssl_certificates = [google_compute_managed_ssl_certificate.lb[0].id]
 }
 
 resource "google_compute_global_address" "lb" {
+  count   = local.lb_count
   name    = "pbfed-lb-ip"
   project = var.gcp_project
 }
 
 resource "google_compute_global_forwarding_rule" "https" {
+  count                 = local.lb_count
   name                  = "pbfed-https-rule"
   project               = var.gcp_project
-  ip_address            = google_compute_global_address.lb.address
+  ip_address            = google_compute_global_address.lb[0].address
   port_range            = "443"
-  target                = google_compute_target_https_proxy.lb.id
+  target                = google_compute_target_https_proxy.lb[0].id
   load_balancing_scheme = "EXTERNAL"
 }
 
 # HTTP -> HTTPS redirect
 resource "google_compute_url_map" "http_redirect" {
+  count   = local.lb_count
   name    = "pbfed-http-redirect"
   project = var.gcp_project
 
@@ -439,16 +447,18 @@ resource "google_compute_url_map" "http_redirect" {
 }
 
 resource "google_compute_target_http_proxy" "http_redirect" {
+  count   = local.lb_count
   name    = "pbfed-http-proxy"
   project = var.gcp_project
-  url_map = google_compute_url_map.http_redirect.id
+  url_map = google_compute_url_map.http_redirect[0].id
 }
 
 resource "google_compute_global_forwarding_rule" "http" {
+  count                 = local.lb_count
   name                  = "pbfed-http-rule"
   project               = var.gcp_project
-  ip_address            = google_compute_global_address.lb.address
+  ip_address            = google_compute_global_address.lb[0].address
   port_range            = "80"
-  target                = google_compute_target_http_proxy.http_redirect.id
+  target                = google_compute_target_http_proxy.http_redirect[0].id
   load_balancing_scheme = "EXTERNAL"
 }
