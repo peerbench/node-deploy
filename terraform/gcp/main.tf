@@ -281,6 +281,61 @@ resource "google_cloud_run_v2_service" "node" {
         name  = "DATABASE_URL"
         value = local.database_url
       }
+
+      env {
+        name  = "NODE_PUBLIC_URL"
+        value = "https://${var.custom_domain}"
+      }
+
+      env {
+        name  = "NODE_DISPLAY_NAME"
+        value = var.node_display_name
+      }
+
+      env {
+        name  = "NODE_LOGIN_POLICY"
+        value = var.node_login_policy
+      }
+
+      env {
+        name  = "PDS_URL"
+        value = var.pds_url
+      }
+
+      env {
+        name  = "PLC_URL"
+        value = var.plc_url
+      }
+
+      env {
+        name  = "INDEXER_URL"
+        value = var.indexer_url
+      }
+
+      env {
+        name  = "STORAGE_ENDPOINT"
+        value = "https://storage.googleapis.com"
+      }
+
+      env {
+        name  = "STORAGE_REGION"
+        value = google_storage_bucket.node_storage.location
+      }
+
+      env {
+        name  = "STORAGE_BUCKET"
+        value = google_storage_bucket.node_storage.name
+      }
+
+      env {
+        name  = "STORAGE_ACCESS_KEY"
+        value = google_storage_hmac_key.node_storage_hmac.access_id
+      }
+
+      env {
+        name  = "STORAGE_SECRET_KEY"
+        value = google_storage_hmac_key.node_storage_hmac.secret
+      }
     }
   }
 

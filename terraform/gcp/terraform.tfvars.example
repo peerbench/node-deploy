@@ -1,3 +1,12 @@
-gcp_project   = "pbfed-xxxxxx"  # your globally-unique GCP project ID
+gcp_project   = "pbfed-xxxxxx"           # your globally-unique GCP project ID
 gcp_region    = "europe-west1"
 custom_domain = "pbfed.youruniversity.edu"
+
+# Node profile (auto-fills wizard step 2 so the operator skips to the SA step)
+node_display_name = "Your Node Name"      # e.g. "MIT peerBench Node"
+node_login_policy = "open"                # open | request-approval | invite-only
+
+# Federation endpoints — override only if you run your own PDS/PLC/indexer
+# pds_url     = "https://p.0rs.org"
+# plc_url     = "https://plc.directory"
+# indexer_url = "https://indexer.peerbench.ai"

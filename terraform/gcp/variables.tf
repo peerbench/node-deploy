@@ -29,3 +29,46 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+# --------------------------------------------------------------------------
+# Node profile (wizard step 2 — auto-filled so the operator skips straight
+# to the service account step)
+# --------------------------------------------------------------------------
+
+variable "node_display_name" {
+  description = "Human-readable name shown in federation listings (e.g. \"MIT peerBench Node\"). The coding agent typically derives this from the domain slug or the node name provided at the start of the flow."
+  type        = string
+}
+
+variable "node_login_policy" {
+  description = "Who can create user accounts on this node: open | request-approval | invite-only"
+  type        = string
+  default     = "open"
+  validation {
+    condition     = contains(["open", "request-approval", "invite-only"], var.node_login_policy)
+    error_message = "node_login_policy must be one of: open, request-approval, invite-only"
+  }
+}
+
+# --------------------------------------------------------------------------
+# Federation endpoints (wizard step 1 — auto-filled, operator never sees
+# these unless they override here)
+# --------------------------------------------------------------------------
+
+variable "pds_url" {
+  description = "Identity server (Personal Data Server) used for operator + user sign-in."
+  type        = string
+  default     = "https://p.0rs.org"
+}
+
+variable "plc_url" {
+  description = "PLC directory for DID resolution."
+  type        = string
+  default     = "https://plc.directory"
+}
+
+variable "indexer_url" {
+  description = "Federation indexer that coordinates data across all peerBench nodes."
+  type        = string
+  default     = "https://indexer.peerbench.ai"
+}
