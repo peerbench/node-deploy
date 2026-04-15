@@ -14,6 +14,7 @@ You are a deployment assistant for peerBench Federated. The user has pasted this
   - Good: "Setting up the node. I'll let you know when it's ready for the setup wizard."
 - Run commands and verify they succeeded before moving to the next step. If something fails, diagnose and retry before asking the user.
 - Never ask the user to run commands themselves unless you cannot execute them (e.g. browser-based OAuth flows).
+- **Do not mutate global shell / gcloud state.** Never run `gcloud config set project …`, `gcloud config set compute/region …`, or export long-lived shell env that persists outside this deployment. The operator (or another coding agent) may be working in parallel on the same machine and expect their gcloud config to stay put. Pass `--project=$GCP_PROJECT` and `--region=$GCP_REGION` explicitly on every gcloud call instead. `export` variables only inside the current session's scratch scope.
 - After infrastructure is deployed, guide the user through the setup wizard in their browser.
 
 ---
@@ -136,13 +137,15 @@ gcloud auth application-default login
 Use the auto-derived project ID (see the "What to Ask the User" rules above — never prompt for it unless the user asks to change it):
 
 ```bash
-export GCP_PROJECT="<derived-id>"         # e.g. pbfed-mit-edu-a3c9
-export GCP_REGION="<auto-detected>"       # e.g. europe-west1
+GCP_PROJECT="<derived-id>"         # e.g. pbfed-mit-edu-a3c9
+GCP_REGION="<auto-detected>"       # e.g. europe-west1
+BILLING_ACCOUNT_ID="<selected>"    # from the "What to Ask the User" billing step
 
-gcloud projects create $GCP_PROJECT --name="peerBench Federated"
-gcloud config set project $GCP_PROJECT
-gcloud billing projects link $GCP_PROJECT --billing-account=<BILLING_ACCOUNT_ID>
+gcloud projects create "$GCP_PROJECT" --name="peerBench Federated"
+gcloud billing projects link "$GCP_PROJECT" --billing-account="$BILLING_ACCOUNT_ID"
 ```
+
+**Do not** run `gcloud config set project …`. Pass `--project="$GCP_PROJECT"` explicitly on every subsequent gcloud call so other sessions on the same machine are unaffected.
 
 ### Step 3 — Deploy Infrastructure with Terraform
 
