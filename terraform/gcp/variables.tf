@@ -43,7 +43,7 @@ variable "node_display_name" {
 variable "node_login_policy" {
   description = "Who can create user accounts on this node: open | request-approval | invite-only"
   type        = string
-  default     = "open"
+  default     = "request-approval"
   validation {
     condition     = contains(["open", "request-approval", "invite-only"], var.node_login_policy)
     error_message = "node_login_policy must be one of: open, request-approval, invite-only"

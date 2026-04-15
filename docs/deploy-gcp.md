@@ -25,11 +25,11 @@ Only ask for things you cannot auto-detect or generate:
 1. **Custom domain** — required. The domain the operator wants the node served on (e.g. `pbfed.mit.edu`). Explain that they'll need access to DNS for this domain to add an A record pointing at the load balancer IP. If the operator doesn't have a domain, tell them they need one before proceeding.
 
 2. **Login policy** — required. Who can create user accounts on the node. Three options:
-   - `open` (default) — anyone can sign up
-   - `request-approval` — operator manually approves each signup
+   - `open` — anyone can sign up
+   - `request-approval` (default) — operator manually approves each signup
    - `invite-only` — no public signup; operator issues invites only
 
-   Present the three options briefly and ask. If the user doesn't care, default to `open`.
+   Present the three options briefly and ask. If the user doesn't care, default to `request-approval`.
 
 3. **Billing account** — only ask if `gcloud billing accounts list` returns more than one open account. If exactly one, link it automatically and tell the user which one. GCP projects themselves are free, so project creation never triggers a charge on its own.
 
@@ -155,7 +155,7 @@ gcp_project       = "pbfed-xxxxxx"
 gcp_region        = "europe-west1"
 custom_domain     = "pbfed.youruniversity.edu"
 node_display_name = "MIT peerBench Node"
-node_login_policy = "open"                     # open | request-approval | invite-only
+node_login_policy = "request-approval"         # open | request-approval | invite-only
 ```
 
 The `pds_url`, `plc_url`, and `indexer_url` variables default to the public peerBench endpoints. Leave them unset unless the operator explicitly wants to run against a self-hosted PDS/PLC/indexer.
