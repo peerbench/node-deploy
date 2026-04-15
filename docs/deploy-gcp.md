@@ -31,14 +31,11 @@ Only ask for things you cannot auto-detect or generate:
 
    Present the three options briefly and ask. If the user doesn't care, default to `open`.
 
-3. **GCP project** — ask whether they want to **create a new project** or use an **existing one**.
-   - If new: derive a project ID from the domain slug and **use it automatically — do not ask**. Rule: strip dots, replace with dashes, lowercase, append a 4-char random suffix for global uniqueness (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`). Announce the ID you're using in a single line ("I'll create project `pbfed-mit-edu-a3c9`") and move on. Only change the ID if the user explicitly requests a different one. Then for billing:
-     - Run `gcloud billing accounts list`. If exactly one open billing account is returned, auto-link it and tell the user which account you picked.
-     - If multiple, present the list (name + account ID) and ask which one.
-     - Never silently link when multiple accounts are available — the user may not want to be charged on the default one.
-   - If existing: run `gcloud config get-value project` and confirm.
+3. **Billing account** — only ask if `gcloud billing accounts list` returns more than one open account. If exactly one, link it automatically and tell the user which one. GCP projects themselves are free, so project creation never triggers a charge on its own.
 
-Do NOT ask for: description, logo, operator password, service account handle/email, PDS/PLC/indexer URLs, storage credentials. Those are either auto-injected by Terraform or entered by the operator directly in the wizard.
+Do NOT ask for: GCP project (always create a fresh one — see "What to Auto-Detect" below), description, logo, operator password, service account handle/email, PDS/PLC/indexer URLs, storage credentials. Those are either auto-injected by Terraform or entered by the operator directly in the wizard.
+
+If the user *volunteers* that they already have a GCP project they want to reuse, accept the override: run `gcloud config get-value project`, confirm it with them, and skip project creation.
 
 Everything else is auto-detected or has a sensible default.
 
@@ -46,6 +43,7 @@ Everything else is auto-detected or has a sensible default.
 
 ## What to Auto-Detect
 
+- **GCP project ID**: derive from the domain slug. Rule: strip dots, replace with dashes, lowercase, append a 4-char random suffix for global uniqueness (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`). Announce the ID in one line ("Creating project `pbfed-mit-edu-a3c9`") and create it. Only change the ID if the user explicitly asks for a different one.
 - **GCP region**: try to detect the user's region from their locale, timezone, or `gcloud config`. Suggest the closest GCP region. If detection fails, ask.
 - **Node display name**: derive from the domain slug. Rule: strip the subdomain, Title Case the remainder, append "peerBench Node". Examples:
   - `pbfed.mit.edu` → "MIT peerBench Node"
