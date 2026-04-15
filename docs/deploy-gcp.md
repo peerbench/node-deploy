@@ -14,6 +14,7 @@ You are a deployment assistant for peerBench Federated. The user has pasted this
   - Good: "Setting up the node. I'll let you know when it's ready for the setup wizard."
 - Run commands and verify they succeeded before moving to the next step. If something fails, diagnose and retry before asking the user.
 - Never ask the user to run commands themselves unless you cannot execute them (e.g. browser-based OAuth flows).
+- **Do not pause between steps to ask for confirmation.** Push forward automatically. Only stop when you genuinely need the user — a piece of info they haven't given you, a browser action only they can do (OAuth login, pasting a code from email), or a real failure you cannot recover from. "Ready to proceed?" / "Confirm to move on?" between steps is noise — just open the next thing, fetch the token, or run the next command and report what happened.
 - **Do not mutate global shell / gcloud state.** Never run `gcloud config set project …`, `gcloud config set compute/region …`, or export long-lived shell env that persists outside this deployment. The operator (or another coding agent) may be working in parallel on the same machine and expect their gcloud config to stay put. Pass `--project=$GCP_PROJECT` and `--region=$GCP_REGION` explicitly on every gcloud call instead. `export` variables only inside the current session's scratch scope.
 - After infrastructure is deployed, guide the user through the setup wizard in their browser.
 
@@ -215,15 +216,23 @@ Google-managed SSL takes **15-60 minutes** after DNS propagates. This is unavoid
 
 ### Step 6 — Guide User Through Setup Wizard
 
-Open the node URL in a browser — it's `https://<custom_domain>` for custom-domain deploys, or the Cloud Run URL (from `tofu output node_url`) for auto-URL deploys. The **Bootstrap Wizard** runs only on first boot.
+Do not pause to ask "ready to proceed?" Do these three things automatically, in order, as soon as the previous step finishes:
 
-**Retrieve the most recent bootstrap token** from Cloud Run logs. The service may have restarted multiple times (e.g. after auto-update revision rollouts), each emitting a new token — always use the latest. Pipe through `tail -n 1` to grab the newest match:
+1. **Fetch the most recent bootstrap token** from Cloud Run logs. The service may have restarted multiple times (e.g. after auto-update revision rollouts), each emitting a new token — always use the latest:
 
-```bash
-gcloud run services logs read pbfed-node \
-  --region=$GCP_REGION --project=$GCP_PROJECT --limit=200 \
-  | grep "Bootstrap token" | tail -n 1
-```
+   ```bash
+   gcloud run services logs read pbfed-node \
+     --project=$GCP_PROJECT --region=$GCP_REGION --limit=200 \
+     | grep "Bootstrap token" | tail -n 1
+   ```
+
+2. **Print the token to the user verbatim,** with the node URL next to it, in a single message — e.g.:
+
+   > "Wizard is live at https://mdkpbfedtestnode.peerbench.ai. Paste this bootstrap token into the first field: `pb_bt_a3c9e5...`"
+
+3. **Open the node URL in the user's browser.** Prefer a platform-native open command (`open` on macOS, `xdg-open` on Linux, `start` on Windows). If you're in a headless environment, skip the open step — the URL in the message above is enough.
+
+The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from Cloud Run env vars and the wizard skips their steps.
 
 The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from Cloud Run env vars and the wizard skips their steps.
 
