@@ -238,6 +238,8 @@ The operator only needs to enter the bootstrap token, create the service account
 
 Do NOT tell the user to run `tofu output storage_*` — storage credentials are injected automatically. Do NOT tell them to fill PDS/PLC/indexer URLs, node public URL, display name, or login policy. Those are already set.
 
+**Plain-language rule** — when talking to the operator (not when reading this doc for your own orientation), avoid internal protocol terms: never say "PDS", "ATProto", "DID", "AT identity", "PLC directory", etc. Use "identity server", "node identity", "account", "directory" instead. This applies to every user-facing message, including the field explanations below.
+
 **Wizard field explanations** (only the fields the operator still sees):
 
 - **Bootstrap Token**: "One-time key to prove you control the node on first setup. Consumed after use."
@@ -247,7 +249,7 @@ Do NOT tell the user to run `tofu output storage_*` — storage credentials are 
 
 - Explain: "Your node needs its own identity on the federation. This is a separate account from the operator account — it's the node itself, used to sign everything the node publishes so other nodes can verify it came from you."
 - **Handle**: "Short name identifying this node (e.g. `research-lab`). The full handle is shown below as `research-lab.<identity-server>`. Must be unique. The wizard pre-fills this from your display name — usually just accept it."
-- **Email**: "Contact email for this node's identity. **Must be unique on the PDS — cannot reuse an address already registered there (including your own operator email).** A confirmation code lands here after the wizard — you'll need it to finish setup. Tip: use plus-addressing like `you+pbfed@gmail.com` — same inbox, different address. Works on Gmail, Outlook, Fastmail, ProtonMail."
+- **Email**: "Contact email for this node. **Must not be already tied to another peerBench account on the same identity server** — including your own, if you already have one. A confirmation code will land in this inbox after the wizard — you'll need to paste it to finish setup. Tip: use plus-addressing like `you+pbfed@gmail.com` — same inbox, different address. Works on Gmail, Outlook, Fastmail, ProtonMail."
 
 ### Step 7 — Post-Wizard Flow
 
