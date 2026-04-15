@@ -24,16 +24,14 @@ Only ask for things you cannot auto-detect or generate:
 
 1. **Custom domain** — required. The domain the operator wants the node served on (e.g. `pbfed.mit.edu`). Explain that they'll need access to DNS for this domain to add an A record pointing at the load balancer IP. If the operator doesn't have a domain, tell them they need one before proceeding.
 
-2. **Node display name** — required. Human-readable name shown in federation listings (e.g. "MIT peerBench Node"). **Derive a sensible default from the domain slug** — e.g. `pbfed.mit.edu` → "MIT peerBench Node". Show the derived name and let the user override. Do NOT ask from scratch if a domain is already given.
-
-3. **Login policy** — required. Who can create user accounts on the node. Three options:
+2. **Login policy** — required. Who can create user accounts on the node. Three options:
    - `open` (default) — anyone can sign up
    - `request-approval` — operator manually approves each signup
    - `invite-only` — no public signup; operator issues invites only
 
    Present the three options briefly and ask. If the user doesn't care, default to `open`.
 
-4. **GCP project** — ask whether they want to **create a new project** or use an **existing one**.
+3. **GCP project** — ask whether they want to **create a new project** or use an **existing one**.
    - If new: derive a project ID from the domain slug and **use it automatically — do not ask**. Rule: strip dots, replace with dashes, lowercase, append a 4-char random suffix for global uniqueness (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`). Announce the ID you're using in a single line ("I'll create project `pbfed-mit-edu-a3c9`") and move on. Only change the ID if the user explicitly requests a different one. Then for billing:
      - Run `gcloud billing accounts list`. If exactly one open billing account is returned, auto-link it and tell the user which account you picked.
      - If multiple, present the list (name + account ID) and ask which one.
@@ -49,6 +47,12 @@ Everything else is auto-detected or has a sensible default.
 ## What to Auto-Detect
 
 - **GCP region**: try to detect the user's region from their locale, timezone, or `gcloud config`. Suggest the closest GCP region. If detection fails, ask.
+- **Node display name**: derive from the domain slug. Rule: strip the subdomain, Title Case the remainder, append "peerBench Node". Examples:
+  - `pbfed.mit.edu` → "MIT peerBench Node"
+  - `node.stanford.edu` → "Stanford peerBench Node"
+  - `peer.ryan.dev` → "Ryan peerBench Node"
+
+  **Do not ask** for the display name. Announce the derived value in one line ("Using display name `MIT peerBench Node`") and move on. Only change it if the user explicitly requests a different one.
 
 ---
 
