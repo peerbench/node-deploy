@@ -24,12 +24,12 @@ Only ask for things you cannot auto-detect or generate:
 
 1. **Custom domain** — required. The domain the operator wants the node served on (e.g. `pbfed.mit.edu`). Explain that they'll need access to DNS for this domain to add an A record pointing at the load balancer IP. If the operator doesn't have a domain, tell them they need one before proceeding.
 
-2. **Login policy** — required. Who can create user accounts on the node. Three options:
-   - `open` — anyone can sign up
-   - `request-approval` (default) — operator manually approves each signup
-   - `invite-only` — no public signup; operator issues invites only
+2. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
+   - `open` — anyone on the internet can sign up without approval.
+   - `request-approval` (default) — anyone can submit a signup request, but the operator must approve each one before the account is created.
+   - `invite-only` — public signup is disabled; the operator manually issues invite links.
 
-   Present the three options briefly and ask. If the user doesn't care, default to `request-approval`.
+   If the user says "I don't care" or similar, default to `request-approval`.
 
 3. **Billing account** — only ask if `gcloud billing accounts list` returns more than one open account. If exactly one, link it automatically and tell the user which one. GCP projects themselves are free, so project creation never triggers a charge on its own.
 
