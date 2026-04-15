@@ -34,7 +34,7 @@ Only ask for things you cannot auto-detect or generate:
    Present the three options briefly and ask. If the user doesn't care, default to `open`.
 
 4. **GCP project** — ask whether they want to **create a new project** or use an **existing one**.
-   - If new: derive a project ID from the domain slug (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-<random-4-chars>`). Strip dots, replace with dashes, lowercase. The random suffix keeps the ID globally unique. Show the derived ID and let the user override. Then for billing:
+   - If new: derive a project ID from the domain slug and **use it automatically — do not ask**. Rule: strip dots, replace with dashes, lowercase, append a 4-char random suffix for global uniqueness (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`). Announce the ID you're using in a single line ("I'll create project `pbfed-mit-edu-a3c9`") and move on. Only change the ID if the user explicitly requests a different one. Then for billing:
      - Run `gcloud billing accounts list`. If exactly one open billing account is returned, auto-link it and tell the user which account you picked.
      - If multiple, present the list (name + account ID) and ask which one.
      - Never silently link when multiple accounts are available — the user may not want to be charged on the default one.
@@ -131,9 +131,11 @@ gcloud auth application-default login
 
 ### Step 2 — Create GCP Project (if new)
 
+Use the auto-derived project ID (see the "What to Ask the User" rules above — never prompt for it unless the user asks to change it):
+
 ```bash
-export GCP_PROJECT="pbfed-xxxxxx"        # globally unique project ID from user input
-export GCP_REGION="europe-west1"          # auto-detected region
+export GCP_PROJECT="<derived-id>"         # e.g. pbfed-mit-edu-a3c9
+export GCP_REGION="<auto-detected>"       # e.g. europe-west1
 
 gcloud projects create $GCP_PROJECT --name="peerBench Federated"
 gcloud config set project $GCP_PROJECT
