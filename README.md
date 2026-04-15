@@ -5,23 +5,12 @@
 
 Deployment scripts for running your own peerBench federation node.
 
+## For operators
+
+Open the guide for your platform, copy it, paste into your AI coding agent (Claude Code, Codex, Cursor, etc.). The agent handles the rest.
+
 ## Supported platforms
 
 | Platform | Guide |
 |---|---|
 | Google Cloud Platform | [docs/deploy-gcp.md](docs/deploy-gcp.md) |
-
-## Quick start
-
-```bash
-git clone https://github.com/peerbench/node-deploy.git
-cd node-deploy
-```
-
-Then follow the guide for your chosen platform (see table above).
-
-## For AI coding agents
-
-Open the platform-specific guide (e.g. `docs/deploy-gcp.md`) in raw
-view. The top of each guide contains a system prompt that turns you
-into an interactive deployment CLI — follow it.
