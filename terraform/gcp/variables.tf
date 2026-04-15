@@ -41,6 +41,12 @@ variable "node_display_name" {
   type        = string
 }
 
+variable "node_handle" {
+  description = "Short slug used as the service account handle on the identity server (e.g. 'pbfed' or 'mit-lab'). Agent should derive a short value from the first subdomain component of the custom domain, or from the project name for auto-URL deploys. Leave empty to let the wizard derive it from the display name (which often ends up too long)."
+  type        = string
+  default     = ""
+}
+
 variable "node_login_policy" {
   description = "Who can create user accounts on this node: open | request-approval | invite-only"
   type        = string

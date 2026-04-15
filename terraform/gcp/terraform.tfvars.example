@@ -4,6 +4,7 @@ custom_domain = "pbfed.youruniversity.edu"
 
 # Node profile (auto-fills wizard step 2 so the operator skips to the SA step)
 node_display_name = "Your Node Name"      # e.g. "MIT peerBench Node"
+node_handle       = "your-lab"            # short slug for the service account, e.g. "mit-lab"
 node_login_policy = "request-approval"    # open | request-approval | invite-only
 
 # Federation endpoints — override only if you run your own PDS/PLC/indexer

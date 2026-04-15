@@ -57,6 +57,14 @@ Everything else is auto-detected or has a sensible default.
 
   **Do not ask** for the display name. Announce the derived value in one line ("Using display name `MIT peerBench Node`") and move on. Only change it if the user explicitly requests a different one.
 
+- **Service account handle**: derive a short slug from the **first subdomain component** of the custom domain (not the display name — that path produces long ugly handles). If there is no custom domain (auto-URL deploy), use the first component of the project name instead. Max 20 chars, lowercase, alphanumerics + dashes only. Examples:
+  - `pbfed.mit.edu` → `pbfed`
+  - `node.stanford.edu` → `node`
+  - `peer.ryan.dev` → `peer`
+  - auto-URL deploy with project `pbfed-mit-edu-a3c9` → `pbfed`
+
+  Pass it as `node_handle` in `terraform.tfvars`. The wizard pre-fills the Service Account Handle field with this value so the operator doesn't have to type or fix a too-long derived default. Do not announce this to the user — it's wiring, not a decision they're making.
+
 ---
 
 ## What to Generate Automatically
@@ -162,6 +170,7 @@ gcp_project       = "pbfed-xxxxxx"
 gcp_region        = "europe-west1"
 custom_domain     = "pbfed.youruniversity.edu"   # or "" for the auto-URL deploy
 node_display_name = "MIT peerBench Node"
+node_handle       = "pbfed"                    # short slug from the first subdomain component
 node_login_policy = "request-approval"         # open | request-approval | invite-only
 ```
 

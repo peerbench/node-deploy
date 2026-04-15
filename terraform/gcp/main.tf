@@ -323,6 +323,7 @@ resource "null_resource" "set_env" {
     service_uri       = google_cloud_run_v2_service.node.uri
     custom_domain     = var.custom_domain
     node_display_name = var.node_display_name
+    node_handle       = var.node_handle
     node_login_policy = var.node_login_policy
     pds_url           = var.pds_url
     plc_url           = var.plc_url
@@ -342,7 +343,7 @@ resource "null_resource" "set_env" {
       gcloud run services update ${google_cloud_run_v2_service.node.name} \
         --project=${var.gcp_project} \
         --region=${var.gcp_region} \
-        --update-env-vars="^@@^NODE_PUBLIC_URL=$PUBLIC_URL@@NODE_DISPLAY_NAME=${var.node_display_name}@@NODE_LOGIN_POLICY=${var.node_login_policy}@@PDS_URL=${var.pds_url}@@PLC_URL=${var.plc_url}@@INDEXER_URL=${var.indexer_url}@@STORAGE_ENDPOINT=https://storage.googleapis.com@@STORAGE_REGION=${google_storage_bucket.node_storage.location}@@STORAGE_BUCKET=${google_storage_bucket.node_storage.name}@@STORAGE_ACCESS_KEY=${google_storage_hmac_key.node_storage_hmac.access_id}@@STORAGE_SECRET_KEY=$HMAC_SECRET"
+        --update-env-vars="^@@^NODE_PUBLIC_URL=$PUBLIC_URL@@NODE_DISPLAY_NAME=${var.node_display_name}@@NODE_HANDLE=${var.node_handle}@@NODE_LOGIN_POLICY=${var.node_login_policy}@@PDS_URL=${var.pds_url}@@PLC_URL=${var.plc_url}@@INDEXER_URL=${var.indexer_url}@@STORAGE_ENDPOINT=https://storage.googleapis.com@@STORAGE_REGION=${google_storage_bucket.node_storage.location}@@STORAGE_BUCKET=${google_storage_bucket.node_storage.name}@@STORAGE_ACCESS_KEY=${google_storage_hmac_key.node_storage_hmac.access_id}@@STORAGE_SECRET_KEY=$HMAC_SECRET"
     EOT
   }
 
