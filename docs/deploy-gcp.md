@@ -39,7 +39,7 @@ Only ask for things you cannot auto-detect or generate:
 3. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
    - `open` — anyone on the internet can sign up without approval.
    - `request-approval` (default) — anyone can submit a signup request, but the operator must approve each one before the account is created.
-   - `invite-only` — public signup is disabled; the operator whitelists specific handles (or DIDs) from the admin panel, and only those accounts can log in. No invite emails, no invite links — it's a handle whitelist.
+   - `invite-only` — public signup is disabled; the operator whitelists specific handles from the admin panel, and only those accounts can log in. No invite emails, no invite links — it's a handle whitelist.
 
    If the user says "I don't care" or similar, default to `request-approval`.
 
@@ -364,7 +364,7 @@ Then, if the operator wants to prove out the end-to-end user flow, walk them thr
 **If `login_policy = invite-only`:**
 
 1. Operator logs in at `<node-url>/login` and opens the admin panel's invite-whitelist section.
-2. Operator types the handle (or DID) of the person they want to allow. There are **no invite emails or invite links** — it is a pure handle whitelist.
+2. Operator types the handle of the person they want to allow. There are **no invite emails or invite links** — it is a pure handle whitelist.
 3. Invited user logs in at `<node-url>/login` with their own Bluesky / identity account normally — their handle matches the whitelist, so access is granted.
 4. Anyone else sees an "Invite Only" lock screen.
 
@@ -380,7 +380,7 @@ Print a summary with:
 - **Operator login link — as a clickable URL** (`<node-url>/login`). Users shouldn't have to construct it.
 - Reminder to save operator password
 - **List of deployed resources with direct GCP Console links**, so the user can inspect / monitor / debug. Substitute `$PROJECT` and `$REGION`:
-  - Cloud Run service: https://console.cloud.google.com/run/detail/$REGION/pbfed-node?project=$PROJECT
+  - Cloud Run service: https://console.cloud.google.com/run/detail/$REGION/$CLOUD_RUN_SERVICE_NAME?project=$PROJECT
   - Cloud SQL instance: https://console.cloud.google.com/sql/instances/pbfed-postgres/overview?project=$PROJECT
   - HTTPS Load Balancer: https://console.cloud.google.com/net-services/loadbalancing/list/loadBalancers?project=$PROJECT
   - Managed SSL cert: https://console.cloud.google.com/security/ccm/list/lbCertificates?project=$PROJECT
@@ -398,7 +398,7 @@ Print a summary with:
 
 All resources live inside a single GCP project:
 
-- **Cloud Run** (`pbfed-node`) — single container running the Node.js backend (Hono API) and the React frontend (Vite SPA, bundled). Connected to a private VPC for Cloud SQL access.
+- **Cloud Run** (service name from `cloud_run_service_name`, default `pbfed-node`) — single container running the Node.js backend (Hono API) and the React frontend (Vite SPA, bundled). Connected to a private VPC for Cloud SQL access.
 - **Cloud SQL** (`pbfed-postgres`) — managed Postgres 15 instance with **private IP only** (via VPC peering). No public attack surface.
 - **GCS Bucket** — file storage for uploads and image generation outputs.
 - **HTTPS Load Balancer** + **Google-managed SSL cert** — serves the custom domain.
