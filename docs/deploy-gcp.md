@@ -38,11 +38,14 @@ Only ask for things you cannot auto-detect or generate:
 3. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
    - `open` — anyone on the internet can sign up without approval.
    - `request-approval` (default) — anyone can submit a signup request, but the operator must approve each one before the account is created.
-   - `invite-only` — public signup is disabled; the operator manually issues invite links.
+   - `invite-only` — public signup is disabled; the operator whitelists specific handles (or DIDs) from the admin panel, and only those accounts can log in. No invite emails, no invite links — it's a handle whitelist.
 
    If the user says "I don't care" or similar, default to `request-approval`.
 
-4. **Billing account** — only ask if `gcloud billing accounts list` returns more than one open account. If exactly one, link it automatically and tell the user which one. GCP projects themselves are free, so project creation never triggers a charge on its own.
+4. **Billing account** — probe with `gcloud billing accounts list` up front. Interpret the result carefully; do not silently keep going if the user has no billing permissions:
+   - **Exactly one open account returned** → auto-link it and tell the operator which one you picked.
+   - **Multiple open accounts returned** → ask the operator which one.
+   - **Empty result OR permission-denied error** → the operator is not a billing admin. Do **not** try to create a project. Explain plainly: "Your Google account doesn't have billing-admin permission, so I can't create a fresh GCP project with billing attached. Do you already have a GCP project (with billing enabled) I can deploy into? If yes, paste the project ID. If no, ask your GCP admin to either grant you Billing Account User on a billing account, or hand you an existing project and set you as Owner on it." When they provide an existing project, switch to the existing-project branch (see bottom of this section).
 
 Do NOT ask for: GCP project (always create a fresh one — see "What to Auto-Detect" below), description, logo, operator password, service account handle/email, PDS/PLC/indexer URLs, storage credentials. Those are either auto-injected by Terraform or entered by the operator directly in the wizard.
 
@@ -286,23 +289,45 @@ Do NOT tell the user to run `tofu output storage_*` — storage credentials are 
 
 ### Step 7 — Post-Wizard Flow
 
-Keep explanations plain; avoid internal protocol terms like ATProto, PDS, or DID unless the user asks:
+Keep explanations plain; avoid internal protocol terms like ATProto, PDS, or DID unless the user asks. Provide the operator login URL as a clickable link every time — users shouldn't have to guess the path.
 
-a. User is redirected to the login page. Tell them to log in with the **operator password** they set in the wizard.
-b. After operator login, a **confirmation code** is required. The identity provider sent it to the service account email. Tell the user to check that inbox and paste the code.
+a. Send the operator to the login page: **`<node-url>/login`** (e.g. `https://mdkpbfedtestnode.peerbench.ai/login`). Tell them to log in with the **operator password** they set in the wizard.
+b. After operator login, a **confirmation code** is required. Tell the user to check the service-account-email inbox (the same address they entered during the wizard, including any `+pbfed` alias) and paste the code.
 c. They now land on the operator dashboard. Setup is effectively done.
-d. To use the node as a regular user:
-   - Log out of the operator account.
-   - On the login page, create a new regular user account (there's a signup link).
-   - Log in as that user — another confirmation code email is sent.
-   - Paste the code to complete user login.
-e. That's it. The node is fully functional.
+
+Then, if the operator wants to prove out the end-to-end user flow, walk them through creating a regular user account. The exact steps depend on the login policy the operator chose:
+
+**If `login_policy = open`:**
+
+1. Log out of the operator account.
+2. Go to **`<node-url>/signup`** (or click the signup link on `<node-url>/login`).
+3. Pick a handle (write it down — this is what they'll log in with every time) + email + password.
+4. Submit. A confirmation code is sent to the email; paste it.
+5. Done — user can browse the node.
+
+**If `login_policy = request-approval`:**
+
+1. User signs up as above at `<node-url>/signup`. They land on a "waiting for approval" screen.
+2. Operator logs in at `<node-url>/login` and opens the admin panel's user-approval section. Approve the pending signup.
+3. User returns to `<node-url>/login` and logs in — now allowed.
+
+**If `login_policy = invite-only`:**
+
+1. Operator logs in at `<node-url>/login` and opens the admin panel's invite-whitelist section.
+2. Operator types the handle (or DID) of the person they want to allow. There are **no invite emails or invite links** — it is a pure handle whitelist.
+3. Invited user logs in at `<node-url>/login` with their own Bluesky / identity account normally — their handle matches the whitelist, so access is granted.
+4. Anyone else sees an "Invite Only" lock screen.
+
+**Tips to include in whichever branch applies:**
+- "Write down your handle — it's what you log in with."
+- "The email you use for signup must be different from the one you used for the service account (including plus-aliases — different address string, same inbox)."
 
 ### Step 8 — Print Summary
 
 Print a summary with:
 
-- Node URL (their custom domain)
+- Node URL (their custom domain, or the auto-generated URL)
+- **Operator login link — as a clickable URL** (`<node-url>/login`). Users shouldn't have to construct it.
 - Reminder to save operator password
 - **List of deployed resources with direct GCP Console links**, so the user can inspect / monitor / debug. Substitute `$PROJECT` and `$REGION`:
   - Cloud Run service: https://console.cloud.google.com/run/detail/$REGION/pbfed-node?project=$PROJECT
