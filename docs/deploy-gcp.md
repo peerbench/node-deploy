@@ -30,10 +30,10 @@ Only ask for things you cannot auto-detect or generate:
    - If the operator provides a domain → use it as-is; derivations below use the domain slug.
    - If they skip / say no / say "use the default URL" → set `custom_domain = ""` in `terraform.tfvars`, and **ask question 2 below** so you still have something to derive display name / handle / project ID from.
 
-2. **Short node name** — **only ask when `custom_domain` is empty**. Skip this entirely if the operator gave a custom domain (the slug covers it).
-   - Phrase: "What short name should I use for this node? (3-20 chars, letters / numbers / dashes — example: `mit-lab`, `ryan-research`.) I'll use it as the display name seed and the service account handle."
-   - Validate: 3-20 chars, `[a-z0-9-]`, no leading/trailing dash.
-   - Use this value as the seed for: project ID (append `-<random-4-chars>`), display name (Title Case + append " peerBench Node"), service account handle.
+2. **Node display name** — **only ask when `custom_domain` is empty**. Skip this entirely if the operator gave a custom domain — the slug covers display name derivation.
+   - Phrase: "What should we call this node? (human-readable — examples: `MIT peerBench Node`, `Ryan's Lab`, `CS Department Benchmarks`.)"
+   - Accept almost anything the operator types. Trim whitespace. Use the value verbatim as the display name.
+   - Derive an internal slug from this name for downstream wiring (project ID + service account handle): lowercase, strip punctuation, collapse whitespace to single dashes, drop non-`[a-z0-9-]`, trim leading/trailing dashes, truncate to 20 chars. If truncation removes meaning, keep the first 20 chars of the first word instead. Example: "Ryan's Lab" → `ryans-lab`; "Prof. Chen's AI Safety Research" → `prof-chens-ai-safety`.
 
 3. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
    - `open` — anyone on the internet can sign up without approval.
@@ -54,23 +54,22 @@ Everything else is auto-detected or has a sensible default.
 
 ## What to Auto-Detect
 
-- **GCP project ID**: derive a slug, then append a 4-char random suffix for global uniqueness. The slug source depends on what the operator gave you:
-  - Custom domain given → strip dots, replace with dashes, lowercase the full domain (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`).
-  - No custom domain → use the short node name they gave in question 2 (e.g. `mit-lab` → `mit-lab-a3c9`).
+- **GCP project ID**: derive a slug, then append a 4-char random suffix for global uniqueness. Slug source depends on what the operator gave you:
+  - Custom domain given → strip dots, replace with dashes, lowercase (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`).
+  - No custom domain → use the slug you computed from the display name in question 2 (e.g. display name "MIT peerBench Node" → slug `mit-peerbench-node` → project ID `mit-peerbench-node-a3c9`).
 
   Announce the ID in one line ("Creating project `pbfed-mit-edu-a3c9`") and create it. Only change the ID if the user explicitly asks for a different one.
 - **GCP region**: try to detect the user's region from their locale, timezone, or `gcloud config`. Suggest the closest GCP region. If detection fails, ask.
-- **Node display name**: derive by Title Case of the slug source + append " peerBench Node". Examples:
+- **Node display name** (custom domain case only — skipped when already asked in question 2): derive by Title Case of the subdomain part of the domain + append " peerBench Node". Examples:
   - `pbfed.mit.edu` → "MIT peerBench Node"
   - `node.stanford.edu` → "Stanford peerBench Node"
   - `peer.ryan.dev` → "Ryan peerBench Node"
-  - short node name `mit-lab` → "MIT Lab peerBench Node"
 
-  **Do not ask** for the display name. Announce the derived value in one line ("Using display name `MIT peerBench Node`") and move on. Only change it if the user explicitly requests a different one.
+  Announce the derived value in one line ("Using display name `MIT peerBench Node`") and move on. Only change it if the user explicitly requests a different one. When the operator supplied the display name directly in question 2, just use their value verbatim — no announcement needed.
 
 - **Service account handle**: derive a short slug. Max 20 chars, lowercase, alphanumerics + dashes only, no leading/trailing dash.
   - Custom domain given → use the **first subdomain component** (e.g. `pbfed.mit.edu` → `pbfed`, `node.stanford.edu` → `node`).
-  - No custom domain → use the short node name the operator gave (already 3-20 chars by validation).
+  - No custom domain → reuse the slug you derived from the display name in question 2.
 
   Pass it as `node_handle` in `terraform.tfvars`. The wizard pre-fills the Service Account Handle field with this value so the operator doesn't have to type or fix a too-long derived default. Do not announce this to the user — it's wiring, not a decision they're making.
 
@@ -150,7 +149,7 @@ gcloud auth application-default login
 ### Step 1 — Collect User Input
 
 1. Greet the user briefly. Ask for the custom domain (question 1 in "What to Ask"). Accept "none" / "skip" / "no" as answers.
-2. **If and only if the operator skipped the domain**, ask for the short node name (question 2 in "What to Ask"). Validate it before moving on.
+2. **If and only if the operator skipped the domain**, ask for the display name (question 2 in "What to Ask"). Compute and remember the internal slug from it for downstream wiring.
 3. Ask for the login policy (question 3) with all three options explained inline.
 4. Auto-detect the region, announce the closest GCP region, let the user override if they want.
 5. Announce the auto-derived project ID and display name in one line each. Do not ask — only change if the user pushes back.
