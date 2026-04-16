@@ -238,21 +238,34 @@ Google-managed SSL takes **15-60 minutes** after DNS propagates. This is unavoid
 
 Do not pause to ask "ready to proceed?" Do these three things automatically, in order, as soon as the previous step finishes:
 
-1. **Fetch the most recent bootstrap token** from the node's logs. The service may have restarted multiple times (e.g. after auto-update rollouts), each emitting a new token — always use the latest. The `gcloud run services logs` command gives you the logs:
+1. **Fetch the bootstrap token** from the node's logs. The backend prints it on first boot inside an ASCII-art banner (`FIRST-TIME SETUP REQUIRED`) with the token on a `TOKEN:` line. The token is a plain UUID, e.g. `7f03bc0d-864d-459b-a343-7d96c69efca6`. Use `gcloud logging read` with a server-side filter instead of `gcloud run services logs read` + grep — the latter fails here because the logger outputs JSON, banner lines don't contain the phrase "Bootstrap token", and order defaults are unreliable:
 
    ```bash
-   gcloud run services logs read pbfed-node \
-     --project=$GCP_PROJECT --region=$GCP_REGION --limit=200 \
-     | grep "Bootstrap token" | tail -n 1
+   gcloud logging read \
+     'resource.type=cloud_run_revision AND resource.labels.service_name=pbfed-node AND jsonPayload.msg:"FIRST-TIME SETUP REQUIRED"' \
+     --project=$GCP_PROJECT \
+     --limit=1 \
+     --order=desc \
+     --format='value(jsonPayload.msg)' \
+     | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+   ```
+
+   Output is just the UUID — pipe directly into your next message to the user.
+
+   If the command returns nothing, the real application has not booted yet (Cloud Run may still be on the placeholder image). Poll every 15-30 s up to 10 min. If you haven't already, trigger the auto-update function directly to skip the 5-minute Cloud Scheduler wait:
+
+   ```bash
+   gcloud functions call pbfed-auto-update \
+     --project=$GCP_PROJECT \
+     --region=$GCP_REGION \
+     --data='{}'
    ```
 
 2. **Print the token to the user verbatim,** with the node URL next to it, in a single message — e.g.:
 
-   > "Wizard is live at https://mdkpbfedtestnode.peerbench.ai. Paste this bootstrap token into the first field: `pb_bt_a3c9e5...`"
+   > "Wizard is live at https://mdkpbfedtestnode.peerbench.ai. Paste this bootstrap token into the first field: `7f03bc0d-864d-459b-a343-7d96c69efca6`"
 
 3. **Open the node URL in the user's browser.** Prefer a platform-native open command (`open` on macOS, `xdg-open` on Linux, `start` on Windows). If you're in a headless environment, skip the open step — the URL in the message above is enough.
-
-The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from env vars injected at deploy time, so the wizard skips their steps.
 
 The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from env vars injected at deploy time, so the wizard skips their steps.
 
@@ -354,7 +367,7 @@ The node polls the `leipniz/pbfed-node` Docker Hub image (temporary location; wi
 - **Cloud Run shows "hello world" / "Welcome to Cloud Run" page**: the auto-update function hasn't run yet. Wait up to 5 min (scheduler interval) or trigger manually via the GCP Console (Cloud Functions → `pbfed-auto-update` → Testing).
 - **SSL cert stuck `PROVISIONING`**: DNS not yet propagated. Verify with `dig your.domain` — must resolve to the LB IP.
 - **Function build fails "missing permission on build service account"**: re-run `tofu apply` to ensure the `cloudbuild.builder` role is granted to both legacy and compute Cloud Build SAs. IAM propagation can take a minute.
-- **"Bootstrap token" not in logs**: the token only prints on first startup. If the wizard was visited once, the token was consumed. To reset: drop the `node_settings` table in Cloud SQL and redeploy.
+- **Bootstrap token not found in logs**: most common cause is that `gcloud run services logs read pbfed-node | grep "Bootstrap token"` was used — that pattern does not match. The real banner says `FIRST-TIME SETUP REQUIRED` and the token is on a `TOKEN:` line as a UUID. Use the `gcloud logging read` command in Step 6 instead. If the token is still missing: Cloud Run may still be on the placeholder image (trigger the auto-update function) or the wizard was already completed and the token is consumed (drop the `node_settings` row and redeploy).
 - **Cloud SQL connection refused**:
   - Verify Cloud SQL connection name: `$GCP_PROJECT:$GCP_REGION:pbfed-postgres`
   - Service account has `roles/cloudsql.client`
