@@ -228,8 +228,40 @@ storage_bucket_name = "pbfed-xxxxxx-pbfed-storage"
 
 If `custom_domain` was left empty, skip this step entirely. The node is already reachable at the auto-generated URL emitted by `tofu output node_url` — proceed directly to Step 6 (the SSL wait is also skipped).
 
+Get `load_balancer_ip` from Terraform outputs. Then — **before** telling the operator to touch anything themselves — check whether the parent domain's DNS is already managed inside one of the user's GCP projects as a Cloud DNS zone. If yes, create the A record yourself with `gcloud`; don't bother the operator.
 
-Get `load_balancer_ip` from Terraform outputs. Tell user to add an A record at their DNS provider pointing `custom_domain` to that IP:
+**Detection:**
+
+1. Parse the parent domain from `custom_domain`. For `testnode.0rs.org` → parent is `0rs.org`. For an apex like `example.com` → parent is `example.com`.
+2. Iterate the user's GCP projects (`gcloud projects list --format='value(projectId)'`) and look for a matching zone:
+   ```bash
+   gcloud dns managed-zones list \
+     --project=<each-project> \
+     --filter="dnsName='<parent-domain>.' AND visibility=public" \
+     --format="value(name,dnsName)"
+   ```
+3. If **exactly one** project+zone matches → you have automatic DNS access. Use it.
+4. If **multiple** zones match across projects → ask the operator which one to use (their hosting might intentionally split zones).
+5. If **no** match → fall back to the manual instructions below.
+
+**Automatic path (zone found):**
+
+Create the A record directly:
+
+```bash
+gcloud dns record-sets create <custom_domain>. \
+  --project=<dns-project> \
+  --zone=<zone-name> \
+  --type=A \
+  --ttl=300 \
+  --rrdatas="<load_balancer_ip>"
+```
+
+Announce what you did in one line ("Added DNS A record `testnode.0rs.org` → `34.120.45.67` in project `peerbench`, zone `zone-0rs-org`. DNS will propagate in a minute or two, then SSL cert provisioning begins."). Do **not** show the operator the manual instructions — they had nothing to do.
+
+**Manual path (zone not found):**
+
+Tell the operator to add an A record at their DNS provider pointing `custom_domain` to `load_balancer_ip`:
 
 | Field | Value |
 |---|---|
