@@ -293,13 +293,15 @@ Do not pause to ask "ready to proceed?" Do these three things automatically, in 
 
    ```bash
    gcloud logging read \
-     'resource.type=cloud_run_revision AND resource.labels.service_name=pbfed-node AND jsonPayload.msg:"FIRST-TIME SETUP REQUIRED"' \
+     "resource.type=cloud_run_revision AND resource.labels.service_name=$CLOUD_RUN_SERVICE_NAME AND jsonPayload.msg:\"FIRST-TIME SETUP REQUIRED\"" \
      --project=$GCP_PROJECT \
      --limit=1 \
      --order=desc \
      --format='value(jsonPayload.msg)' \
      | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
    ```
+
+   `$CLOUD_RUN_SERVICE_NAME` is whatever you put in `cloud_run_service_name` in `terraform.tfvars` — do not hardcode `pbfed-node`, the operator may have a different service name.
 
    Output is just the UUID — pipe directly into your next message to the user.
 
@@ -440,7 +442,7 @@ The node polls the `leipniz/pbfed-node` Docker Hub image (temporary location; wi
 - **Cloud Run shows "hello world" / "Welcome to Cloud Run" page**: the auto-update function hasn't run yet. Wait up to 5 min (scheduler interval) or trigger manually via the GCP Console (Cloud Functions → `pbfed-auto-update` → Testing).
 - **SSL cert stuck `PROVISIONING`**: DNS not yet propagated. Verify with `dig your.domain` — must resolve to the LB IP.
 - **Function build fails "missing permission on build service account"**: re-run `tofu apply` to ensure the `cloudbuild.builder` role is granted to both legacy and compute Cloud Build SAs. IAM propagation can take a minute.
-- **Bootstrap token not found in logs**: most common cause is that `gcloud run services logs read pbfed-node | grep "Bootstrap token"` was used — that pattern does not match. The real banner says `FIRST-TIME SETUP REQUIRED` and the token is on a `TOKEN:` line as a UUID. Use the `gcloud logging read` command in Step 6 instead. If the token is still missing: Cloud Run may still be on the placeholder image (trigger the auto-update function) or the wizard was already completed and the token is consumed (drop the `node_settings` row and redeploy).
+- **Bootstrap token not found in logs**: most common cause is that `gcloud run services logs read <service> | grep "Bootstrap token"` was used — that pattern does not match. The real banner says `FIRST-TIME SETUP REQUIRED` and the token is on a `TOKEN:` line as a UUID. Use the `gcloud logging read` command in Step 6 instead, and substitute the actual Cloud Run service name (`cloud_run_service_name` from `terraform.tfvars`, not the hard-coded `pbfed-node`). If the token is still missing: Cloud Run may still be on the placeholder image (trigger the auto-update function) or the wizard was already completed and the token is consumed (drop the `node_settings` row and redeploy).
 - **Cloud SQL connection refused**:
   - Verify Cloud SQL connection name: `$GCP_PROJECT:$GCP_REGION:pbfed-postgres`
   - Service account has `roles/cloudsql.client`
