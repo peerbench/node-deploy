@@ -11,6 +11,8 @@ Open the guide for your platform, copy it, paste into your AI coding agent (Clau
 
 ## Supported platforms
 
-| Platform | Guide |
-|---|---|
-| Google Cloud Platform | [docs/deploy-gcp.md](docs/deploy-gcp.md) |
+| Platform | Guide | Local tools |
+|---|---|---|
+| Google Cloud Platform | [docs/deploy-gcp.md](docs/deploy-gcp.md) | `gcloud`, `tofu` (or `terraform` 1.5+), `git` |
+
+The agent detects which local tools are missing and offers to install them — you don't have to pre-install anything.
