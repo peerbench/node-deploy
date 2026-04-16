@@ -76,6 +76,20 @@ Everything else is auto-detected or has a sensible default.
 
   Pass it as `node_handle` in `terraform.tfvars`. The wizard pre-fills the Service Account Handle field with this value so the operator doesn't have to type or fix a too-long derived default. Do not announce this to the user — it's wiring, not a decision they're making.
 
+- **Cloud Run service name**: this becomes the left-most part of the auto-generated URL (`<service>-xxxxxxxx-<region-code>.a.run.app`), so a meaningful name makes the URL readable when there's no custom domain. Derivation rule:
+  1. Start from whichever slug is most descriptive (display-name slug for no-domain deploys, the full domain slug for custom-domain deploys — e.g. `pbfed-mit-edu`, `ryans-lab`).
+  2. If the slug **already contains** `pbfed` (anywhere in the string), use it as-is.
+  3. If the slug does **not** contain `pbfed`, append `-pbfed-node` so the URL clearly signals that it's a peerBench node.
+  4. Validate against Cloud Run rules: lowercase letters, digits, dashes; start with a letter; ≤ 63 chars total; no trailing dash. Truncate or trim as needed.
+
+  Examples:
+  - domain `pbfed.mit.edu` → slug `pbfed-mit-edu` → already contains `pbfed` → service `pbfed-mit-edu` → URL `pbfed-mit-edu-xxxxxxxx-ew3.a.run.app`
+  - domain `node.stanford.edu` → slug `node-stanford-edu` → no `pbfed` → service `node-stanford-edu-pbfed-node` → URL `node-stanford-edu-pbfed-node-xxxxxxxx-ew3.a.run.app`
+  - display name "Ryan's Lab" (no domain) → slug `ryans-lab` → no `pbfed` → service `ryans-lab-pbfed-node`
+  - display name "MIT peerBench Node" (no domain) → slug `mit-peerbench-node` → does NOT contain the literal `pbfed` substring (it's `peerbench-node`) → append → `mit-peerbench-node-pbfed-node` (ugly but correct — the rule is a literal `pbfed` substring check)
+
+  Pass it as `cloud_run_service_name` in `terraform.tfvars`. Do not announce — wiring, not a decision the user makes.
+
 ---
 
 ## What to Generate Automatically
@@ -183,9 +197,10 @@ Generate `terraform.tfvars` from user input:
 gcp_project       = "pbfed-xxxxxx"
 gcp_region        = "europe-west1"
 custom_domain     = "pbfed.youruniversity.edu"   # or "" for the auto-URL deploy
-node_display_name = "MIT peerBench Node"
-node_handle       = "pbfed"                    # short slug from the first subdomain component
-node_login_policy = "request-approval"         # open | request-approval | invite-only
+node_display_name       = "MIT peerBench Node"
+node_handle             = "pbfed"                 # short slug, SA handle prefix
+node_login_policy       = "request-approval"      # open | request-approval | invite-only
+cloud_run_service_name  = "pbfed-mit-edu"         # appears in the auto-URL; already contains "pbfed" so no suffix needed
 ```
 
 The `pds_url`, `plc_url`, and `indexer_url` variables default to the public peerBench endpoints. Leave them unset unless the operator explicitly wants to run against a self-hosted PDS/PLC/indexer.

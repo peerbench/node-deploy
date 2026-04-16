@@ -227,7 +227,7 @@ resource "google_storage_hmac_key" "node_storage_hmac" {
 # --------------------------------------------------------------------------
 
 resource "google_cloud_run_v2_service" "node" {
-  name     = "pbfed-node"
+  name     = var.cloud_run_service_name
   location = var.gcp_region
   project  = var.gcp_project
 

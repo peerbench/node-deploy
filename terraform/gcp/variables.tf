@@ -41,6 +41,18 @@ variable "node_display_name" {
   type        = string
 }
 
+variable "cloud_run_service_name" {
+  description = "Name of the Cloud Run service (also becomes the left-most part of the auto-generated URL). Agent should derive a meaningful slug from the operator's display name or domain and append '-pbfed-node' if the slug doesn't already identify peerBench. Examples: 'mit-lab-pbfed-node', 'ryans-lab-pbfed-node', 'pbfed-mit-edu'."
+  type        = string
+  default     = "pbfed-node"
+
+  validation {
+    # Cloud Run service names: lowercase letters, digits, dashes; start with letter; <= 63 chars; no consecutive dashes; no trailing dash.
+    condition     = can(regex("^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$", var.cloud_run_service_name))
+    error_message = "cloud_run_service_name must match Cloud Run's naming rules: lowercase letters/digits/dashes, start with a letter, <= 63 chars, no trailing dash."
+  }
+}
+
 variable "node_handle" {
   description = "Short slug used as the service account handle on the identity server (e.g. 'pbfed' or 'mit-lab'). Agent should derive a short value from the first subdomain component of the custom domain, or from the project name for auto-URL deploys. Leave empty to let the wizard derive it from the display name (which often ends up too long)."
   type        = string

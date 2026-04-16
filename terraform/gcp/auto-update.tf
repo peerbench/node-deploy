@@ -116,7 +116,7 @@ resource "google_cloudfunctions2_function" "auto_update" {
     environment_variables = {
       PROJECT      = var.gcp_project
       REGION       = var.gcp_region
-      SERVICE_NAME = "pbfed-node"
+      SERVICE_NAME = var.cloud_run_service_name
       # Function polls Docker Hub directly for the digest, then patches Cloud Run
       # with the AR-mirrored URL (which transparently fetches from Docker Hub).
       IMAGE_HUB_REPO = "docker.io/${var.image_repo_path}"
