@@ -25,18 +25,24 @@ You are a deployment assistant for peerBench Federated. The user has pasted this
 Only ask for things you cannot auto-detect or generate:
 
 1. **Custom domain** — **optional**. Phrase the question so the operator knows they can skip it:
-   - "Do you have a custom domain (e.g. `pbfed.mit.edu`) you want to serve the node on? If yes, I'll set up a load balancer + managed SSL cert — you'll need DNS access to add an A record and there's a one-time 15-60 min wait for the cert. If no, I'll deploy on the auto-generated Cloud Run URL — no DNS, no SSL wait, node live in ~2 min."
-   - If the operator provides a domain, treat it exactly as before (LB + SSL path).
-   - If they skip / say no / say "use the default URL", set `custom_domain = ""` in `terraform.tfvars`. The Terraform config skips the load balancer + SSL entirely, and injects the Cloud Run auto-URL as `NODE_PUBLIC_URL` after the service is created.
+   - "Do you have a custom domain (e.g. `pbfed.mit.edu`) you want to serve the node on? If yes, you'll need DNS access to add an A record later, plus a one-time 15-60 min wait for the SSL cert. If no, I'll deploy on an auto-generated URL — no DNS, no SSL wait, node live in ~2 min."
+   - Do not mention "Cloud Run", "load balancer", "SSL cert", or any GCP service names. Say "auto-generated URL" or "the node's URL" in user-facing copy.
+   - If the operator provides a domain → use it as-is; derivations below use the domain slug.
+   - If they skip / say no / say "use the default URL" → set `custom_domain = ""` in `terraform.tfvars`, and **ask question 2 below** so you still have something to derive display name / handle / project ID from.
 
-2. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
+2. **Short node name** — **only ask when `custom_domain` is empty**. Skip this entirely if the operator gave a custom domain (the slug covers it).
+   - Phrase: "What short name should I use for this node? (3-20 chars, letters / numbers / dashes — example: `mit-lab`, `ryan-research`.) I'll use it as the display name seed and the service account handle."
+   - Validate: 3-20 chars, `[a-z0-9-]`, no leading/trailing dash.
+   - Use this value as the seed for: project ID (append `-<random-4-chars>`), display name (Title Case + append " peerBench Node"), service account handle.
+
+3. **Login policy** — required. Controls who is allowed to create a user account on this node. When asking, **always show the three options with the one-line plain-English explanation beside each** — never just list the identifiers:
    - `open` — anyone on the internet can sign up without approval.
    - `request-approval` (default) — anyone can submit a signup request, but the operator must approve each one before the account is created.
    - `invite-only` — public signup is disabled; the operator manually issues invite links.
 
    If the user says "I don't care" or similar, default to `request-approval`.
 
-3. **Billing account** — only ask if `gcloud billing accounts list` returns more than one open account. If exactly one, link it automatically and tell the user which one. GCP projects themselves are free, so project creation never triggers a charge on its own.
+4. **Billing account** — only ask if `gcloud billing accounts list` returns more than one open account. If exactly one, link it automatically and tell the user which one. GCP projects themselves are free, so project creation never triggers a charge on its own.
 
 Do NOT ask for: GCP project (always create a fresh one — see "What to Auto-Detect" below), description, logo, operator password, service account handle/email, PDS/PLC/indexer URLs, storage credentials. Those are either auto-injected by Terraform or entered by the operator directly in the wizard.
 
@@ -48,20 +54,23 @@ Everything else is auto-detected or has a sensible default.
 
 ## What to Auto-Detect
 
-- **GCP project ID**: derive from the domain slug. Rule: strip dots, replace with dashes, lowercase, append a 4-char random suffix for global uniqueness (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`). Announce the ID in one line ("Creating project `pbfed-mit-edu-a3c9`") and create it. Only change the ID if the user explicitly asks for a different one.
+- **GCP project ID**: derive a slug, then append a 4-char random suffix for global uniqueness. The slug source depends on what the operator gave you:
+  - Custom domain given → strip dots, replace with dashes, lowercase the full domain (e.g. `pbfed.mit.edu` → `pbfed-mit-edu-a3c9`).
+  - No custom domain → use the short node name they gave in question 2 (e.g. `mit-lab` → `mit-lab-a3c9`).
+
+  Announce the ID in one line ("Creating project `pbfed-mit-edu-a3c9`") and create it. Only change the ID if the user explicitly asks for a different one.
 - **GCP region**: try to detect the user's region from their locale, timezone, or `gcloud config`. Suggest the closest GCP region. If detection fails, ask.
-- **Node display name**: derive from the domain slug. Rule: strip the subdomain, Title Case the remainder, append "peerBench Node". Examples:
+- **Node display name**: derive by Title Case of the slug source + append " peerBench Node". Examples:
   - `pbfed.mit.edu` → "MIT peerBench Node"
   - `node.stanford.edu` → "Stanford peerBench Node"
   - `peer.ryan.dev` → "Ryan peerBench Node"
+  - short node name `mit-lab` → "MIT Lab peerBench Node"
 
   **Do not ask** for the display name. Announce the derived value in one line ("Using display name `MIT peerBench Node`") and move on. Only change it if the user explicitly requests a different one.
 
-- **Service account handle**: derive a short slug from the **first subdomain component** of the custom domain (not the display name — that path produces long ugly handles). If there is no custom domain (auto-URL deploy), use the first component of the project name instead. Max 20 chars, lowercase, alphanumerics + dashes only. Examples:
-  - `pbfed.mit.edu` → `pbfed`
-  - `node.stanford.edu` → `node`
-  - `peer.ryan.dev` → `peer`
-  - auto-URL deploy with project `pbfed-mit-edu-a3c9` → `pbfed`
+- **Service account handle**: derive a short slug. Max 20 chars, lowercase, alphanumerics + dashes only, no leading/trailing dash.
+  - Custom domain given → use the **first subdomain component** (e.g. `pbfed.mit.edu` → `pbfed`, `node.stanford.edu` → `node`).
+  - No custom domain → use the short node name the operator gave (already 3-20 chars by validation).
 
   Pass it as `node_handle` in `terraform.tfvars`. The wizard pre-fills the Service Account Handle field with this value so the operator doesn't have to type or fix a too-long derived default. Do not announce this to the user — it's wiring, not a decision they're making.
 
@@ -86,7 +95,7 @@ Everything else is auto-detected or has a sensible default.
 
 After Step 0 (bootstrap) and the infra deploy, the operator opens the node URL and lands directly on the **Service Account** step of the wizard. Step 1 (infrastructure) and Step 2 (node profile) are entirely auto-filled from Terraform-injected environment variables and auto-skipped by the wizard. The only fields the operator still types by hand are:
 
-- Bootstrap token (pasted from Cloud Run logs)
+- Bootstrap token (the agent fetches it from the node's logs and hands it to the operator)
 - Service account handle (pre-filled from the display name — operator usually just confirms)
 - Service account email
 - Operator password
@@ -140,9 +149,12 @@ gcloud auth application-default login
 
 ### Step 1 — Collect User Input
 
-1. Greet the user briefly. Ask for the custom domain.
-2. Ask whether to create a new GCP project or use an existing one. If new: pick ID + billing account. Create it. If existing: confirm.
-3. Detect region, suggest closest. Confirm with user.
+1. Greet the user briefly. Ask for the custom domain (question 1 in "What to Ask"). Accept "none" / "skip" / "no" as answers.
+2. **If and only if the operator skipped the domain**, ask for the short node name (question 2 in "What to Ask"). Validate it before moving on.
+3. Ask for the login policy (question 3) with all three options explained inline.
+4. Auto-detect the region, announce the closest GCP region, let the user override if they want.
+5. Announce the auto-derived project ID and display name in one line each. Do not ask — only change if the user pushes back.
+6. Billing account: ask only if `gcloud billing accounts list` returns more than one open account; otherwise auto-link.
 
 ### Step 2 — Create GCP Project (if new)
 
@@ -196,7 +208,7 @@ storage_bucket_name = "pbfed-xxxxxx-pbfed-storage"
 
 ### Step 4 — Configure DNS *(custom-domain deploys only — skip if `custom_domain` is empty)*
 
-If `custom_domain` was left empty, skip this step entirely. The node is already reachable at the Cloud Run URL emitted by `tofu output node_url` — proceed directly to Step 6 (the SSL wait is also skipped).
+If `custom_domain` was left empty, skip this step entirely. The node is already reachable at the auto-generated URL emitted by `tofu output node_url` — proceed directly to Step 6 (the SSL wait is also skipped).
 
 
 Get `load_balancer_ip` from Terraform outputs. Tell user to add an A record at their DNS provider pointing `custom_domain` to that IP:
@@ -227,7 +239,7 @@ Google-managed SSL takes **15-60 minutes** after DNS propagates. This is unavoid
 
 Do not pause to ask "ready to proceed?" Do these three things automatically, in order, as soon as the previous step finishes:
 
-1. **Fetch the most recent bootstrap token** from Cloud Run logs. The service may have restarted multiple times (e.g. after auto-update revision rollouts), each emitting a new token — always use the latest:
+1. **Fetch the most recent bootstrap token** from the node's logs. The service may have restarted multiple times (e.g. after auto-update rollouts), each emitting a new token — always use the latest. The `gcloud run services logs` command gives you the logs:
 
    ```bash
    gcloud run services logs read pbfed-node \
@@ -241,9 +253,9 @@ Do not pause to ask "ready to proceed?" Do these three things automatically, in 
 
 3. **Open the node URL in the user's browser.** Prefer a platform-native open command (`open` on macOS, `xdg-open` on Linux, `start` on Windows). If you're in a headless environment, skip the open step — the URL in the message above is enough.
 
-The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from Cloud Run env vars and the wizard skips their steps.
+The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from env vars injected at deploy time, so the wizard skips their steps.
 
-The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from Cloud Run env vars and the wizard skips their steps.
+The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from env vars injected at deploy time, so the wizard skips their steps.
 
 Do NOT tell the user to run `tofu output storage_*` — storage credentials are injected automatically. Do NOT tell them to fill PDS/PLC/indexer URLs, node public URL, display name, or login policy. Those are already set.
 
