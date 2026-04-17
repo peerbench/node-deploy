@@ -15,3 +15,6 @@ node_modules/
 .DS_Store
 .vscode/
 .idea/
+
+# Per-deploy summary written by the agent at end of run
+deployment_log.md
