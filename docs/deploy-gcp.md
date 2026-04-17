@@ -49,7 +49,7 @@ Only ask for things you cannot auto-detect or generate:
    - **Multiple open accounts returned** → ask the operator which one.
    - **Empty result OR permission-denied error** → the operator is not a billing admin. Do **not** try to create a project. Explain plainly: "Your Google account doesn't have billing-admin permission, so I can't create a fresh GCP project with billing attached. Do you already have a GCP project (with billing enabled) I can deploy into? If yes, paste the project ID. If no, ask your GCP admin to either grant you Billing Account User on a billing account, or hand you an existing project and set you as Owner on it." When they provide an existing project, switch to the existing-project branch (see bottom of this section).
 
-Do NOT ask for: GCP project (always create a fresh one — see "What to Auto-Detect" below), description, logo, operator password, service account handle/email, PDS/PLC/indexer URLs, storage credentials. Those are either auto-injected by Terraform or entered by the operator directly in the wizard.
+Do NOT ask for: GCP project (always create a fresh one — see "What to Auto-Detect" below), description, logo, node operator password, service account handle/email, PDS/PLC/indexer URLs, storage credentials. Those are either auto-injected by Terraform or entered by the operator directly in the wizard.
 
 If the user *volunteers* that they already have a GCP project they want to reuse, accept the override: run `gcloud config get-value project`, confirm it with them, and skip project creation.
 
@@ -116,7 +116,7 @@ After Step 0 (bootstrap) and the infra deploy, the operator opens the node URL a
 - Bootstrap token (the agent fetches it from the node's logs and hands it to the operator)
 - Service account handle (pre-filled from the display name — operator usually just confirms)
 - Service account email
-- Operator password
+- Node Operator password
 
 No infra URLs, no storage credentials, no display-name/login-policy forms.
 
@@ -333,7 +333,7 @@ Do not pause to ask "ready to proceed?" Do these three things automatically, in 
 
 3. **Go silent.** After emitting that message, produce no further output until the user replies. No "waiting for you...", no status polling, no reminders. The next thing the agent says is either a response to the user or a hard-error recovery.
 
-The operator only needs to enter the bootstrap token, create the service account, and set the operator password. Infrastructure and profile fields are auto-filled from env vars injected at deploy time, so the wizard skips their steps.
+The operator only needs to enter the bootstrap token, create the service account, and set the node operator password. Infrastructure and profile fields are auto-filled from env vars injected at deploy time, so the wizard skips their steps.
 
 Do NOT tell the user to run `tofu output storage_*` — storage credentials are injected automatically. Do NOT tell them to fill PDS/PLC/indexer URLs, node public URL, display name, or login policy. Those are already set.
 
@@ -342,7 +342,7 @@ Do NOT tell the user to run `tofu output storage_*` — storage credentials are 
 **Wizard field explanations** (only the fields the operator still sees):
 
 - **Bootstrap Token**: "One-time key to prove you control the node on first setup. Consumed after use."
-- **Operator Password**: "Your password for logging into the node admin console. No recovery — save it."
+- **Node Operator Password**: "Your password for logging into the node admin console. No recovery — save it."
 
 **Service Account step** (first real form the operator fills):
 
@@ -354,7 +354,7 @@ Do NOT tell the user to run `tofu output storage_*` — storage credentials are 
 
 Keep explanations plain; avoid internal protocol terms like ATProto, PDS, or DID unless the user asks. Provide the operator login URL as a clickable link every time — users shouldn't have to guess the path.
 
-a. Send the operator to the login page: **`<node-url>/login`** (e.g. `https://mdkpbfedtestnode.peerbench.ai/login`). Tell them to log in with the **operator password** they set in the wizard.
+a. Send the operator to the login page: **`<node-url>/login`** (e.g. `https://mdkpbfedtestnode.peerbench.ai/login`). Tell them to log in with the **node operator password** they set in the wizard.
 b. After operator login, a **confirmation code** is required. Tell the user to check the service-account-email inbox (the same address they entered during the wizard, including any `+pbfed` alias) and paste the code.
 c. They now land on the operator dashboard. Setup is effectively done.
 
@@ -396,7 +396,7 @@ The summary contains:
 
 - Node URL (their custom domain, or the auto-generated URL)
 - **Operator login link — as a clickable URL** (`<node-url>/login`). Users shouldn't have to construct it.
-- Reminder to save the operator password (the agent never knew it — it was typed into the wizard directly)
+- Reminder to save the node operator password (the agent never knew it — it was typed into the wizard directly)
 - Path to `terraform.tfvars` so the operator can see which values were used
 - **List of deployed resources with direct GCP Console links**, so the operator can inspect / monitor / debug. Substitute `$PROJECT`, `$REGION`, `$CLOUD_RUN_SERVICE_NAME`:
   - Cloud Run service: https://console.cloud.google.com/run/detail/$REGION/$CLOUD_RUN_SERVICE_NAME?project=$PROJECT
@@ -439,7 +439,7 @@ Generated by the deploy agent on <ISO timestamp>.
 
 ## Reminder
 
-- Save your operator password somewhere safe — there is no recovery.
+- Save your node operator password somewhere safe — there is no recovery.
 - Auto-update runs every 5 minutes; no action needed to receive new node releases.
 - Re-running this deploy doc in this folder will regenerate this file.
 ```
