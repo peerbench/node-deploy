@@ -179,10 +179,13 @@ Run these sub-steps **in this exact order**. The prereq check must happen **befo
    supabase projects api-keys --project-ref "$REF" --format json
    ```
    Parse the response for the `anon` key and the `service_role` key.
-5. **Construct `DATABASE_URL`.** Format:
+5. **Construct `DATABASE_URL` using the IPv4 Session pooler, not the direct connection.** Render's network is IPv4-only; Supabase's direct endpoint (`db.<ref>.supabase.co`) resolves to IPv6 in most regions and will fail from Render with `ENETUNREACH`. Use the Session-mode pooler on port 5432 — it speaks full Postgres and keeps prepared statements working (Transaction mode on port 6543 breaks ORMs that use named prepared statements):
+
    ```
-   postgresql://postgres:<DB_PW>@db.<REF>.supabase.co:5432/postgres
+   postgresql://postgres.<REF>:<DB_PW>@aws-0-<supabase-region>.pooler.supabase.com:5432/postgres
    ```
+
+   Note the two twists vs. the direct URL: the username becomes `postgres.<ref>` (compound form the pooler requires), and the host is `aws-0-<region>.pooler.supabase.com`. The `<supabase-region>` slug matches the region the project was created in (e.g. `eu-central-1`, `us-east-1`, `ap-southeast-1`).
 6. **Create the storage bucket.** No CLI command exists for this. Hit the Storage REST endpoint with service_role auth:
    ```bash
    curl -fsS -X POST "https://$REF.supabase.co/storage/v1/bucket" \
@@ -195,7 +198,7 @@ At the end of this step the agent has everything needed to boot the node:
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | `postgresql://postgres:<DB_PW>@db.<REF>.supabase.co:5432/postgres` |
+| `DATABASE_URL` | `postgresql://postgres.<REF>:<DB_PW>@aws-0-<supabase-region>.pooler.supabase.com:5432/postgres` (Session-mode IPv4 pooler — required from Render) |
 | `STORAGE_ENDPOINT` | `https://<REF>.supabase.co/storage/v1/s3` |
 | `STORAGE_REGION` | the chosen region (e.g. `eu-central-1`) |
 | `STORAGE_ACCESS_KEY` | `<REF>` |
@@ -393,3 +396,4 @@ The node connects outbound to:
 - **Bootstrap token not in logs** — the real application has not booted yet. Poll `render logs` up to 3 min. If still missing, the wizard may have already been completed on a previous run and the token was consumed; drop the `node_settings` row via `supabase db` → redeploy by restarting the service (`render deploys create <service-id> --wait`).
 - **Wizard rejects the embedded `?bootstrapToken=` URL** — older node images may not support the URL param yet. Fall back to the two-line URL + token display and let the operator paste manually.
 - **Lost the node operator password** — no recovery today. Drop the `ADMIN_PASSWORD_HASH` row from `node_settings` via the Supabase dashboard SQL editor, then re-run the wizard from scratch.
+- **Postgres connection errors (`ENETUNREACH`, `ECONNREFUSED`, `connect to db.<ref>.supabase.co failed`)** — the service is using the direct Supabase host, which is IPv6-only from Render's network. Fix `DATABASE_URL` to use the IPv4 Session pooler: `postgresql://postgres.<REF>:<DB_PW>@aws-0-<region>.pooler.supabase.com:5432/postgres`. Patch via `render services update <service-id> --env-var DATABASE_URL=...`.
