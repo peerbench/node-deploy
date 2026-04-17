@@ -193,6 +193,24 @@ Run these sub-steps **in this exact order**. The prereq check must happen **befo
      -H "Content-Type: application/json" \
      -d '{"id":"pbfed-storage","name":"pbfed-storage","public":false}'
    ```
+7. **Ask the operator to mint a Storage S3 access key in the Supabase dashboard.** This is the only manual step in the whole flow and it cannot be automated — Supabase's Management API does not expose S3 key creation as of April 2026, and server-side S3-compat access only works with a dashboard-minted keypair (JWT-as-session-token auth is for client-side RLS use, not our path).
+
+   **Instructions to the operator, exactly in this shape — short, clickable, no extra prose:**
+
+   ```
+
+   One manual step. Open this URL:
+
+     https://supabase.com/dashboard/project/<REF>/settings/storage
+
+   In the "S3 Connection" section, click "New access key". Name it "pbfed-node". Copy both values back to me:
+
+     - Access key ID
+     - Secret access key (shown once, won't be visible again)
+
+   ```
+
+   When the operator pastes the two strings, store them as `STORAGE_ACCESS_KEY` and `STORAGE_SECRET_KEY` — do not validate their shape, just forward to Render. Do not ask any clarifying questions; the dashboard UI already labels the fields unambiguously.
 
 At the end of this step the agent has everything needed to boot the node:
 
@@ -201,10 +219,11 @@ At the end of this step the agent has everything needed to boot the node:
 | `DATABASE_URL` | `postgresql://postgres.<REF>:<DB_PW>@aws-0-<supabase-region>.pooler.supabase.com:5432/postgres` (Session-mode IPv4 pooler — required from Render) |
 | `STORAGE_ENDPOINT` | `https://<REF>.supabase.co/storage/v1/s3` |
 | `STORAGE_REGION` | the chosen region (e.g. `eu-central-1`) |
-| `STORAGE_ACCESS_KEY` | `<REF>` |
-| `STORAGE_SECRET_KEY` | `<anon JWT>` |
-| `STORAGE_SESSION_TOKEN` | `<service_role JWT>` |
+| `STORAGE_ACCESS_KEY` | the Access key ID the operator pasted |
+| `STORAGE_SECRET_KEY` | the Secret access key the operator pasted |
 | `STORAGE_BUCKET` | `pbfed-storage` |
+
+Do **not** set `STORAGE_SESSION_TOKEN`. That env var is for a different auth mode the node's storage probe does not use.
 
 ### Step 3 — Create the Render service
 
@@ -223,9 +242,8 @@ render services create \
   --env-var "DATABASE_URL=$DATABASE_URL" \
   --env-var "STORAGE_ENDPOINT=https://$REF.supabase.co/storage/v1/s3" \
   --env-var "STORAGE_REGION=<supabase-region>" \
-  --env-var "STORAGE_ACCESS_KEY=$REF" \
-  --env-var "STORAGE_SECRET_KEY=$ANON_JWT" \
-  --env-var "STORAGE_SESSION_TOKEN=$SERVICE_ROLE_JWT" \
+  --env-var "STORAGE_ACCESS_KEY=<pasted access key id>" \
+  --env-var "STORAGE_SECRET_KEY=<pasted secret access key>" \
   --env-var "STORAGE_BUCKET=pbfed-storage" \
   --env-var "NODE_DISPLAY_NAME=<display name>" \
   --env-var "NODE_HANDLE=<handle>" \
