@@ -126,13 +126,23 @@ No infra URLs, no storage credentials, no display-name/login-policy forms.
 
 ### Step 0 — Bootstrap
 
-Before anything else:
+Run these sub-steps **in this exact order**. The prereq check must happen **before the clone** so the agent doesn't skip it.
 
-1. **Detect clone state.** Check whether the current working directory is a clone of `peerbench/node-deploy` (look for `terraform/gcp/` + `docs/deploy-gcp.md`).
-2. **If not a clone:**
-   - If CWD is empty → `git clone https://github.com/peerbench/node-deploy.git .`
-   - Otherwise → `git clone https://github.com/peerbench/node-deploy.git node-deploy && cd node-deploy`
-3. **Ensure prerequisites installed.** Required: `gcloud`, `tofu` (or `terraform` 1.5+), `git`. Detect the OS first (macOS vs Debian/Ubuntu vs other), and offer to install missing tools using the platform-specific commands below.
+1. **Prereq check — always run, always announce.** Verify these three commands are on PATH:
+   - `gcloud` (`command -v gcloud && gcloud --version | head -1`)
+   - `tofu` or `terraform` 1.5+ (`command -v tofu || command -v terraform`)
+   - `git` (`command -v git`)
+
+   **Emit exactly one line to the operator summarizing the result** — even when everything is already installed. Examples:
+   - All present: `Prereqs: gcloud ✓ 505.0.0, tofu ✓ 1.9.0, git ✓`
+   - Missing tools: `Prereqs: gcloud ✓, tofu ✗, git ✓ — installing tofu...`
+
+   If anything is missing, install it using the platform-specific commands below (detect OS first: macOS vs Debian/Ubuntu vs other). Do **not** proceed to sub-step 2 until every prereq is confirmed present. Never silently skip this.
+
+2. **Detect clone state and clone if needed.** Only after sub-step 1 passes:
+   - If the current working directory is already a clone of `peerbench/node-deploy` (check for `terraform/gcp/` + `docs/deploy-gcp.md`) → continue.
+   - Else if CWD is empty → `git clone https://github.com/peerbench/node-deploy.git .`
+   - Else → `git clone https://github.com/peerbench/node-deploy.git node-deploy && cd node-deploy`
 
 #### Install commands
 

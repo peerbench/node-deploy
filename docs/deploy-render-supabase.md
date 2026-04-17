@@ -98,12 +98,25 @@ No infra URLs, no storage credentials, no display-name/login-policy forms.
 
 ### Step 0 — Bootstrap
 
-Before anything else:
+Run these sub-steps **in this exact order**. The prereq check must happen **before the clone** so the agent doesn't skip it.
 
-1. **Detect clone state.** Check whether the current working directory is a clone of `peerbench/node-deploy` (look for `docs/deploy-render-supabase.md`). If not, clone it:
-   - If CWD is empty → `git clone https://github.com/peerbench/node-deploy.git .`
-   - Otherwise → `git clone https://github.com/peerbench/node-deploy.git node-deploy && cd node-deploy`
-2. **Ensure prerequisites installed.** Required: `supabase` CLI (v2.50+), `render` CLI, `curl`, `git`. Detect the OS first (macOS vs Debian/Ubuntu vs other). Install missing tools non-interactively.
+1. **Prereq check — always run, always announce.** Verify these four commands are on PATH:
+   - `supabase` v2.50+ (`command -v supabase && supabase --version`)
+   - `render` (`command -v render && render --version`)
+   - `curl` (`command -v curl`)
+   - `git` (`command -v git`)
+
+   **Emit exactly one line to the operator summarizing the result** — even when everything is already installed. Examples:
+   - All present: `Prereqs: supabase ✓ 2.51.0, render ✓ 1.4.2, curl ✓, git ✓`
+   - Missing tools: `Prereqs: supabase ✗, render ✓, curl ✓, git ✓ — installing supabase...`
+
+   If anything is missing, install it using the platform-specific commands below (detect OS first: macOS vs Debian/Ubuntu vs other). Do **not** proceed to sub-step 2 until every prereq is confirmed present. Never silently skip this.
+
+2. **Detect clone state and clone if needed.** Only after sub-step 1 passes:
+   - If the current working directory is already a clone of `peerbench/node-deploy` (check for `docs/deploy-render-supabase.md`) → continue.
+   - Else if CWD is empty → `git clone https://github.com/peerbench/node-deploy.git .`
+   - Else → `git clone https://github.com/peerbench/node-deploy.git node-deploy && cd node-deploy`
+
 3. **Ensure both CLIs are authenticated.** Probe with `supabase projects list` and `render workspace current`. If either fails for auth reasons, run the corresponding interactive login and wait for the operator to complete the browser OAuth:
    - `supabase login`
    - `render login`
