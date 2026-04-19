@@ -193,7 +193,7 @@ Run these sub-steps **in this exact order**. The prereq check must happen **befo
      -H "Content-Type: application/json" \
      -d '{"id":"pbfed-storage","name":"pbfed-storage","public":false}'
    ```
-7. **Ask the operator to mint a Storage S3 access key in the Supabase dashboard.** This is the only manual step in the whole flow and it cannot be automated — Supabase's Management API does not expose S3 key creation as of April 2026, and server-side S3-compat access only works with a dashboard-minted keypair (JWT-as-session-token auth is for client-side RLS use, not our path).
+7. **Ask the operator to mint a Storage S3 access key in the Supabase dashboard.** This is the only manual step in the whole flow and it cannot be automated — Supabase's Management API does not expose S3 key creation as of April 2026, and server-side S3-compat access only works with a dashboard-minted keypair.
 
    **Instructions to the operator, exactly in this shape — short, clickable, no extra prose:**
 
@@ -222,8 +222,6 @@ At the end of this step the agent has everything needed to boot the node:
 | `STORAGE_ACCESS_KEY` | the Access key ID the operator pasted |
 | `STORAGE_SECRET_KEY` | the Secret access key the operator pasted |
 | `STORAGE_BUCKET` | `pbfed-storage` |
-
-Do **not** set `STORAGE_SESSION_TOKEN`. That env var is for a different auth mode the node's storage probe does not use.
 
 ### Step 3 — Create the Render service
 
