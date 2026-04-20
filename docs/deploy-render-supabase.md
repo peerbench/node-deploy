@@ -201,9 +201,9 @@ Run these sub-steps **in this exact order**. The prereq check must happen **befo
 
    One manual step. Open this URL:
 
-     https://supabase.com/dashboard/project/<REF>/settings/storage
+     https://supabase.com/dashboard/project/<REF>/storage/s3
 
-   In the "S3 Connection" section, click "New access key". Name it "pbfed-node". Copy both values back to me:
+   In the "Access keys" section, click "New access key". Name it "pbfed-node". Copy both values back to me:
 
      - Access key ID
      - Secret access key (shown once, won't be visible again)
@@ -217,7 +217,7 @@ At the end of this step the agent has everything needed to boot the node:
 | Variable | Value |
 |---|---|
 | `DATABASE_URL` | `postgresql://postgres.<REF>:<DB_PW>@aws-0-<supabase-region>.pooler.supabase.com:5432/postgres` (Session-mode IPv4 pooler — required from Render) |
-| `STORAGE_ENDPOINT` | `https://<REF>.supabase.co/storage/v1/s3` |
+| `STORAGE_ENDPOINT` | `https://<REF>.storage.supabase.co/storage/v1/s3` (note the `.storage.` subdomain — distinct from the project's main `<REF>.supabase.co` host) |
 | `STORAGE_REGION` | the chosen region (e.g. `eu-central-1`) |
 | `STORAGE_ACCESS_KEY` | the Access key ID the operator pasted |
 | `STORAGE_SECRET_KEY` | the Secret access key the operator pasted |
@@ -238,7 +238,7 @@ render services create \
   --region "<render-region>" \
   --env-var "NODE_ENV=production" \
   --env-var "DATABASE_URL=$DATABASE_URL" \
-  --env-var "STORAGE_ENDPOINT=https://$REF.supabase.co/storage/v1/s3" \
+  --env-var "STORAGE_ENDPOINT=https://$REF.storage.supabase.co/storage/v1/s3" \
   --env-var "STORAGE_REGION=<supabase-region>" \
   --env-var "STORAGE_ACCESS_KEY=<pasted access key id>" \
   --env-var "STORAGE_SECRET_KEY=<pasted secret access key>" \
