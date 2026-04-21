@@ -117,11 +117,13 @@ Run these sub-steps **in this exact order**. The prereq check must happen **befo
    - Else if CWD is empty → `git clone https://github.com/peerbench/node-deploy.git .`
    - Else → `git clone https://github.com/peerbench/node-deploy.git node-deploy && cd node-deploy`
 
-3. **Ensure both CLIs are authenticated.** Probe with `supabase projects list` and `render workspace current`. If either fails for auth reasons, run the corresponding interactive login and wait for the operator to complete the browser OAuth:
+3. **Ensure both CLIs are authenticated.** Probe with `supabase projects list` and `render whoami`. If either probe fails for auth reasons, **run the corresponding interactive login and wait for the operator to complete the browser OAuth — do not pre-decide that OAuth will fail:**
    - `supabase login`
    - `render login`
 
-   For headless shells, fall back to `SUPABASE_ACCESS_TOKEN` / `RENDER_API_KEY` env vars — explain plainly that the operator can mint a Personal Access Token at <https://supabase.com/dashboard/account/tokens> and an API key at <https://dashboard.render.com/u/settings/api-keys>.
+   Important: these commands only need loopback to bind a local OAuth callback port. The user's own browser handles the external network. A sandboxed agent shell with blocked outbound HTTP can still run them successfully — the CLI just prints a URL for the operator to open in their laptop browser. Do not skip the login step because your environment "looks headless" — try it first.
+
+   Only fall back to PAT / API-key env vars (`SUPABASE_ACCESS_TOKEN`, `RENDER_API_KEY`) if the interactive login command itself returns a real error. When falling back, explain plainly that the operator can mint a Personal Access Token at <https://supabase.com/dashboard/account/tokens> and an API key at <https://dashboard.render.com/u/settings/api-keys>.
 
 ### Install commands
 
