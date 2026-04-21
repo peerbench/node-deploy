@@ -277,7 +277,7 @@ Two files in this repo drive it:
 
 Do this in order:
 
-1. **Ask the operator for a Render API key.** The one they minted during Step 0 headless fallback is fine to reuse. Otherwise guide them:
+1. **Ask the operator to mint a Render API key dedicated to the auto-update cron.** Keeping it separate from any login key means the operator can revoke either independently:
    ```
 
    Open this URL:
