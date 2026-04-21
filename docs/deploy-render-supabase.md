@@ -16,6 +16,7 @@ This path does **not** support custom domains — Render free tier serves the no
   - Bad: "Patching the Render service with NODE_PUBLIC_URL using `render services update`, which will trigger a new revision."
   - Good: "Finalizing node URL. Hang on."
 - Run commands and verify they succeeded before moving to the next step. If something fails, diagnose and retry before asking the operator.
+- **Every numbered step under "Deployment Flow" is mandatory and must run in order.** No step is decorative or optional. If a step's heading starts with a verb like "Wire", "Provision", "Create", "Wait", "Print" — treat it as an action, not a description. After finishing a step, move to the next one immediately; do not skip ahead just because the service looks functional.
 - Never ask the operator to run commands themselves unless you cannot execute them (e.g. browser-based OAuth flows like `supabase login` / `render login`).
 - **Do not pause between steps to ask for confirmation.** Push forward automatically. Only stop when you genuinely need the operator — a piece of info they haven't given you, a browser action only they can do, or a real failure you cannot recover from. "Ready to proceed?" between steps is noise — just run the next command and report what happened.
 - **Do not mutate global shell state.** The operator (or another coding agent) may be using the same terminal. Pass explicit flags on every CLI call, don't `export` values outside this deploy's scratch scope. Keep the operator's default `supabase` / `render` workspaces untouched if they had one previously.
@@ -181,13 +182,25 @@ Run these sub-steps **in this exact order**. The prereq check must happen **befo
    supabase projects api-keys --project-ref "$REF" --format json
    ```
    Parse the response for the `anon` key and the `service_role` key.
-5. **Construct `DATABASE_URL` using the IPv4 Session pooler, not the direct connection.** Render's network is IPv4-only; Supabase's direct endpoint (`db.<ref>.supabase.co`) resolves to IPv6 in most regions and will fail from Render with `ENETUNREACH`. Use the Session-mode pooler on port 5432 — it speaks full Postgres and keeps prepared statements working (Transaction mode on port 6543 breaks ORMs that use named prepared statements):
+5. **Construct `DATABASE_URL` using the IPv4 Session pooler.** Render's network is IPv4-only; Supabase's direct endpoint (`db.<ref>.supabase.co`) resolves to IPv6 in most regions and will fail from Render with `ENETUNREACH`. The Session-mode pooler on port 5432 speaks full Postgres and keeps prepared statements working (Transaction mode on port 6543 breaks ORMs that use named prepared statements).
+
+   **Do not hardcode the pooler host.** The `aws-N-<region>` prefix is not fixed to the region — Supabase distributes projects across pooler clusters (`aws-0`, `aws-1`, …) and you cannot infer which cluster the project landed on. Ask Supabase's Management API for the live connection string instead:
+
+   ```bash
+   curl -fsS "https://api.supabase.com/v1/projects/$REF/config/database" \
+     -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+   | jq -r '.db_host, .db_port'
+   ```
+
+   The response exposes the pooler host directly. Build the URL from it:
 
    ```
-   postgresql://postgres.<REF>:<DB_PW>@aws-0-<supabase-region>.pooler.supabase.com:5432/postgres
+   postgresql://postgres.<REF>:<DB_PW>@<pooler-host>:5432/postgres?sslmode=require
    ```
 
-   Note the two twists vs. the direct URL: the username becomes `postgres.<ref>` (compound form the pooler requires), and the host is `aws-0-<region>.pooler.supabase.com`. The `<supabase-region>` slug matches the region the project was created in (e.g. `eu-central-1`, `us-east-1`, `ap-southeast-1`).
+   `<pooler-host>` looks like `aws-0-eu-central-1.pooler.supabase.com` for some projects, `aws-1-eu-central-1.pooler.supabase.com` for others. The username stays `postgres.<ref>` — compound form the pooler requires. Keep `?sslmode=require`. If the node's `pg` driver later throws `self-signed certificate in certificate chain`, append `&uselibpqcompat=true` — Supabase's pooler needs the libpq-compat TLS path for Node-pg clients.
+
+   If `SUPABASE_ACCESS_TOKEN` is not set in your environment but `supabase login` succeeded, the token lives in `~/.supabase/access-token` — read it with `cat ~/.supabase/access-token` before the curl.
 6. **Create the storage bucket.** No CLI command exists for this. Hit the Storage REST endpoint with service_role auth:
    ```bash
    curl -fsS -X POST "https://$REF.supabase.co/storage/v1/bucket" \
@@ -218,7 +231,7 @@ At the end of this step the agent has everything needed to boot the node:
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | `postgresql://postgres.<REF>:<DB_PW>@aws-0-<supabase-region>.pooler.supabase.com:5432/postgres` (Session-mode IPv4 pooler — required from Render) |
+| `DATABASE_URL` | `postgresql://postgres.<REF>:<DB_PW>@<pooler-host>:5432/postgres?sslmode=require` — `<pooler-host>` comes from Supabase's Management API (see sub-step 5 above); the `aws-N` prefix varies per project. Append `&uselibpqcompat=true` if the backend later errors on TLS. |
 | `STORAGE_ENDPOINT` | `https://<REF>.storage.supabase.co/storage/v1/s3` (note the `.storage.` subdomain — distinct from the project's main `<REF>.supabase.co` host) |
 | `STORAGE_REGION` | the chosen region (e.g. `eu-central-1`) |
 | `STORAGE_ACCESS_KEY` | the Access key ID the operator pasted |
@@ -490,6 +503,8 @@ The node connects outbound to:
 - **Bootstrap token not in logs** — the real application has not booted yet. Poll `render logs` up to 3 min. If still missing, the wizard may have already been completed on a previous run and the token was consumed; drop the `node_settings` row via `supabase db` → redeploy by restarting the service (`render deploys create <service-id> --wait`).
 - **Wizard rejects the embedded `?bootstrapToken=` URL** — older node images may not support the URL param yet. Fall back to the two-line URL + token display and let the operator paste manually.
 - **Lost the node operator password** — no recovery today. Drop the `ADMIN_PASSWORD_HASH` row from `node_settings` via the Supabase dashboard SQL editor, then re-run the wizard from scratch.
-- **Postgres connection errors (`ENETUNREACH`, `ECONNREFUSED`, `connect to db.<ref>.supabase.co failed`)** — the service is using the direct Supabase host, which is IPv6-only from Render's network. Fix `DATABASE_URL` to use the IPv4 Session pooler: `postgresql://postgres.<REF>:<DB_PW>@aws-0-<region>.pooler.supabase.com:5432/postgres`. Patch via `render services update <service-id> --env-var DATABASE_URL=...`.
+- **Postgres connection errors (`ENETUNREACH`, `ECONNREFUSED`, `connect to db.<ref>.supabase.co failed`)** — service is using the direct Supabase host, which is IPv6-only from Render's network. Fix `DATABASE_URL` to use the IPv4 Session pooler. Query the real host via `curl https://api.supabase.com/v1/projects/<ref>/config/database -H "Authorization: Bearer <pat>" | jq -r .db_host`, rebuild the URL as `postgresql://postgres.<ref>:<pw>@<pooler-host>:5432/postgres?sslmode=require`, patch via `render services update <service-id> --env-var DATABASE_URL=...`.
+- **Postgres TLS error `self-signed certificate in certificate chain` or `unable to get local issuer certificate`** — Node's `pg` driver doesn't load Supabase's pooler CA the way libpq does. Append `&uselibpqcompat=true` to `DATABASE_URL` (after `?sslmode=require`) and redeploy. This flag tells the pooler to negotiate TLS in a mode the Node driver accepts without a custom cert bundle.
+- **Agent skipped Step 5 auto-update** — every numbered step under "Deployment Flow" is mandatory. If the agent moved straight from Step 4 to Step 6, re-run Step 5 by hand: deploy the Edge Function, set secrets, apply the SQL migration. The feature files live in `supabase/functions/pbfed-auto-update/` and `supabase/migrations/*_pbfed_auto_update.sql`.
 - **Auto-update never fires** — check: (a) `SELECT * FROM cron.job WHERE jobname = 'pbfed-auto-update';` returns one row, (b) `SELECT * FROM cron.job_run_details WHERE jobname = 'pbfed-auto-update' ORDER BY start_time DESC LIMIT 5;` shows recent runs, (c) `supabase functions logs pbfed-auto-update --project-ref <ref>` shows invocations. If the cron job is missing, re-run `supabase db push`. If the function errors, most common causes are stale `RENDER_API_KEY` or mismatched `RENDER_SERVICE_ID` — re-run `supabase secrets set` with the correct values.
 - **Auto-update triggers a deploy but new image doesn't land** — Render's `/deploys` POST uses the currently-configured image reference. Since we pin `:latest`, a new Render revision will pull the current `latest` digest. If the revision still shows the old digest in Render's dashboard, Docker Hub hasn't propagated the new tag yet; wait 30-60 s and trigger again with `?force=1`.
